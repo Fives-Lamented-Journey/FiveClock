@@ -1,0 +1,74 @@
+<RCC>
+    <qresource prefix="/pic">
+        <file>res/pic/noRecord-background.png</file>
+        <file>res/pic/noWeekRecord.png</file>
+        <file>res/pic/deskpet.png</file>
+        <file>res/pic/dialog_background .png</file>
+        <file>res/pic/bgi14.jpg</file>
+        <file>res/pic/bgi05.png</file>
+    </qresource>
+    <qresource prefix="/icon">
+        <file>res/icon/count_hover_button.png</file>
+        <file>res/icon/count_ini_button.png</file>
+        <file>res/icon/count_pressed_button.png</file>
+        <file>res/icon/end_hover_button.png</file>
+        <file>res/icon/end_ini_button.png</file>
+        <file>res/icon/end_pressed_button.png</file>
+        <file>res/icon/pause_hover_button.png</file>
+        <file>res/icon/pause_ini_button.png</file>
+        <file>res/icon/start_hover_button.png</file>
+        <file>res/icon/start_ini_button.png</file>
+        <file>res/icon/start_pressed_button.png</file>
+        <file>res/icon/window_icon.png</file>
+        <file>res/icon/confirm_hover.png</file>
+        <file>res/icon/confirm_ini.png</file>
+        <file>res/icon/confirm_pressed.png</file>
+        <file>res/icon/cancel_hover.png</file>
+        <file>res/icon/cancel_init.png</file>
+        <file>res/icon/cancel_pressed.png</file>
+        <file>res/icon/alter_hover.png</file>
+        <file>res/icon/alter_ini.png</file>
+        <file>res/icon/alter_pressed.png</file>
+        <file>res/icon/del_hover.png</file>
+        <file>res/icon/del_ini.png</file>
+        <file>res/icon/del_pressed.png</file>
+        <file>res/icon/card_hover.png</file>
+        <file>res/icon/card_ini.png</file>
+        <file>res/icon/card_pressed.png</file>
+        <file>res/icon/home_hover.png</file>
+        <file>res/icon/home_init.png</file>
+        <file>res/icon/home_pressed.png</file>
+        <file>res/icon/pause_pressed_button.png</file>
+        <file>res/icon/add_hover_button.png</file>
+        <file>res/icon/add_ini_button.png</file>
+        <file>res/icon/add_pressed_button.png</file>
+        <file>res/icon/confirm_hover_button.png</file>
+        <file>res/icon/confirm_ini_buton.png</file>
+        <file>res/icon/confirm_pressed_pressed.png</file>
+        <file>res/icon/cancel_pressed_button.png</file>
+        <file>res/icon/cancel_hover_button.png</file>
+        <file>res/icon/cancel_ini_button.png</file>
+        <file>res/icon/fullScreen_hover.png</file>
+        <file>res/icon/fullScreen_ini.png</file>
+        <file>res/icon/fullScreen_pressed.png</file>
+        <file>res/icon/nomalScreen_ini.png</file>
+        <file>res/icon/nomalScreen_pressed.png</file>
+        <file>res/icon/normalScreen_hover.png</file>
+        <file>res/icon/exit_hover.png</file>
+        <file>res/icon/exit_ini.png</file>
+        <file>res/icon/exit_pressed.png</file>
+        <file>res/icon/chartButton_hover.png</file>
+        <file>res/icon/chartButton_ini.png</file>
+        <file>res/icon/chartButton_pressed.png</file>
+        <file>windowsIcon.ico</file>
+    </qresource>
+    <qresource prefix="/font">
+        <file>res/font/ZhouZiFang.ttf</file>
+    </qresource>
+    <qresource prefix="/sound">
+        <file>res/sound/shenziMidnight.wav</file>
+        <file>res/sound/shenziMorning.wav</file>
+        <file>res/sound/shenziNight.wav</file>
+        <file>res/sound/shenziNoon.wav</file>
+    </qresource>
+</RCC>

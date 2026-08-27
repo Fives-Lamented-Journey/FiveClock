@@ -1,0 +1,13 @@
+build/
+res/
+*.pro.user
+*.pro.user.*
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.pdb
+.DS_Store
+Thumbs.db

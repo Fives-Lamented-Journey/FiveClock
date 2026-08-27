@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>infoDialog</class>
+ <widget class="QDialog" name="infoDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>267</width>
+    <height>518</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>事件记录</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="pic.qrc">
+    <normaloff>:/icon/res/icon/window_icon.png</normaloff>:/icon/res/icon/window_icon.png</iconset>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">color:black</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,1,1,0,0,1,9,1">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <item>
+       <widget class="QLabel" name="titleLabel">
+        <property name="text">
+         <string>事件记录</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignmentFlag::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="startFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QLabel" name="stratLabel">
+        <property name="text">
+         <string>开始时间:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="startLineEdit"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="endFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QLabel" name="endLabel">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <property name="text">
+         <string>结束时间:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="endLineEdit"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="consumFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,1">
+      <item>
+       <widget class="QLabel" name="consumLabel">
+        <property name="text">
+         <string>消耗时长:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="consumSpinBox">
+        <property name="styleSheet">
+         <string notr="true">QSpinBox::up-button {
+        subcontrol-origin: border;
+        subcontrol-position: top right;
+        width: 0px; /* 宽度设为0，按钮不可见 */
+    }
+    QSpinBox::down-button {
+        subcontrol-origin: border;
+        subcontrol-position: bottom right;
+        width: 0px; /* 宽度设为0，按钮不可见 */
+    }</string>
+        </property>
+        <property name="readOnly">
+         <bool>false</bool>
+        </property>
+        <property name="suffix">
+         <string>min</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="counterFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
+      <item>
+       <widget class="QLabel" name="counterLabel">
+        <property name="text">
+         <string>分神次数:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="counterSpinBox">
+        <property name="styleSheet">
+         <string notr="true">QSpinBox::up-button {
+        subcontrol-origin: border;
+        subcontrol-position: top right;
+        width: 0px; /* 宽度设为0，按钮不可见 */
+    }
+    QSpinBox::down-button {
+        subcontrol-origin: border;
+        subcontrol-position: bottom right;
+        width: 0px; /* 宽度设为0，按钮不可见 */
+    }</string>
+        </property>
+        <property name="readOnly">
+         <bool>false</bool>
+        </property>
+        <property name="suffix">
+         <string>次</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="classFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,1">
+      <item>
+       <widget class="QLabel" name="classLabel">
+        <property name="text">
+         <string>事件分类:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="classComboBox">
+        <item>
+         <property name="text">
+          <string>工作学习</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>总结反思</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>家庭亲情</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>运动睡眠</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>社交人际</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>休闲娱乐</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="detailFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>11</number>
+      </property>
+      <property name="topMargin">
+       <number>11</number>
+      </property>
+      <property name="rightMargin">
+       <number>11</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="detailLabel">
+        <property name="text">
+         <string>具体描述:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTextEdit" name="detailTextEdit">
+        <property name="styleSheet">
+         <string notr="true">background-color: rgba(255, 255, 255, 128);</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="buttonFrame">
+     <property name="styleSheet">
+      <string notr="true">background: transparent;border:none;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Shape::StyledPanel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Shadow::Raised</enum>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="pic.qrc"/>
+ </resources>
+ <connections/>
+</ui>
