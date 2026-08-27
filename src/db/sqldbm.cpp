@@ -1,4 +1,4 @@
-#include "sqldbm.h"
+#include "db/sqldbm.h"
 #include <QTime>
 #include <QSqlError>   // lastError().text() 需要完整类型
 
@@ -29,6 +29,11 @@ sqlDBM::~sqlDBM()
 bool sqlDBM::tableExits(QString &tableName) {
     // 通过检查数据库中的表名列表来判断表是否存在
     return DB.tables().contains(tableName);
+}
+
+// 获取数据库中全部用户表名（批量接口：供日历一次性判断哪些日期有记录）
+QStringList sqlDBM::allTableNames() {
+    return DB.tables();
 }
 
 // 获取指定表的行数

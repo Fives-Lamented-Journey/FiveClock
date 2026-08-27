@@ -1,0 +1,4 @@
+# 让 clangd 使用 build 目录下 CMake 生成的编译数据库
+# （clangd 默认只在项目根查找 compile_commands.json）
+CompileFlags:
+  CompilationDatabase: build

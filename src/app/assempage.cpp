@@ -1,13 +1,13 @@
-#include "assempage.h"
+#include "app/assempage.h"
 #include "ui_assempage.h"
-#include "homePage.h"
-#include "subpage.h"
-#include "chartpage.h"
-#include "card.h"
-#include "infodialog.h"
-#include "petwindow.h"
-#include "customcalendarwidget.h"
-#include "mybutton.h"
+#include "pages/homePage.h"
+#include "pages/subpage.h"
+#include "pages/chartpage.h"
+#include "pages/card.h"
+#include "pages/infodialog.h"
+#include "app/petwindow.h"
+#include "widgets/customcalendarwidget.h"
+#include "widgets/mybutton.h"
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include <QApplication>
@@ -30,6 +30,8 @@ assemPage::assemPage(QWidget *parent)
     // 子页面注入数据管理对象，后续直接获取记录
     // （注意：subPage 构造期会执行一次 showCard，此时数据尚未注入，保持原有的空记录展示行为）
     aSubPage->setDataBase(&DBM);
+    // 日历注入数据管理对象，批量刷新日期按钮样式（替代原先逐按钮发信号查询）
+    aSubPage->calendar->setDataBase(&DBM);
     qDebug() << "Entering achartpage constructor";
     // 创建图表页面实例
     aChartPage = new chartPage(this);
@@ -89,8 +91,6 @@ assemPage::assemPage(QWidget *parent)
     connect(aSubPage, &subPage::updateRecord, this, &assemPage::assUpdateRecord);
     // 连接子页面的删除记录信号到删除记录槽函数
     connect(aSubPage, &subPage::deleteRecord, this, &assemPage::assDeleteRecord);
-    // 连接子页面的日历按钮样式设置信号到设置日期按钮样式槽函数
-    connect(aSubPage->calendar, &CustomCalendarWidget::setButtonStyle, this, &assemPage::setDayButtonStyle);
 
     // 连接子页面的添加空记录按钮点击信号到添加空记录槽函数
     connect(aSubPage->subAddRecordButton, &QPushButton::clicked, this, &assemPage::assAddEmptyRecord);
@@ -321,46 +321,6 @@ void assemPage::assAddEmptyRecord()
     else
     {
         qDebug("exec02");
-    }
-}
-
-// 设置日期按钮样式
-void assemPage::setDayButtonStyle(QPushButton *dayButton, QDate day)
-{
-    // 定义空日期按钮样式
-    QString dayEmptyButtonStyle = QString("QPushButton {"
-                                          "    background-color:rgba(224,224,224,128);"
-                                          "    color: #333333;"
-                                          "    border: none;"
-                                          "    padding: 0px;"
-                                          "    border-radius: 5px;"
-                                          "}"
-                                          "QPushButton:hover {"
-                                          "    background-color:rgba(255,255,255,128);"
-                                          "}");
-    // 定义非空日期按钮样式
-    QString dayNoEmptyButtonStyle = QString("QPushButton {"
-                                            "    background-color:rgba(152 ,245 ,255,128);"
-                                            "    color: #333333;"
-                                            "    border: none;"
-                                            "    padding: 0px;"
-                                            "    border-radius: 5px;"
-                                            "}"
-                                            "QPushButton:hover {"
-                                            "    background-color:rgba(152 ,245 ,255,200);"
-                                            "}");
-
-    // 将日期转换为字符串格式
-    QString strDay = day.toString("yyyy-MM-dd");
-    if (DBM.tableExits(strDay) && DBM.getRowCount(strDay) > 0)
-    {
-        // 如果表存在且有记录，则设置非空日期按钮样式
-        dayButton->setStyleSheet(dayNoEmptyButtonStyle);
-    }
-    else
-    {
-        // 否则设置空日期按钮样式
-        dayButton->setStyleSheet(dayEmptyButtonStyle);
     }
 }
 

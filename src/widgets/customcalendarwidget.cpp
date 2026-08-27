@@ -1,10 +1,81 @@
-#include "customcalendarwidget.h"
+#include "widgets/customcalendarwidget.h"
+#include "db/sqldbm.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QApplication>
 #include <QDebug>
+#include <QSet>
 #include <qtimer.h>
+
+// 注入数据管理对象，用于批量查询哪些日期有记录
+void CustomCalendarWidget::setDataBase(sqlDBM *dbm)
+{
+    m_dbm = dbm;
+}
+
+// 批量刷新日期按钮样式：一次枚举当月有记录的日期集合后统一设置，
+// 替代原先逐按钮发信号查询的用法（每次刷新由 N 次数据库往返降为 1 次）
+void CustomCalendarWidget::refreshDayStyles()
+{
+    // 定义空日期按钮样式
+    static const QString dayEmptyButtonStyle = QString("QPushButton {"
+                                                       "    background-color:rgba(224,224,224,128);"
+                                                       "    color: #333333;"
+                                                       "    border: none;"
+                                                       "    padding: 0px;"
+                                                       "    border-radius: 5px;"
+                                                       "}"
+                                                       "QPushButton:hover {"
+                                                       "    background-color:rgba(255,255,255,128);"
+                                                       "}");
+    // 定义非空日期按钮样式
+    static const QString dayNoEmptyButtonStyle = QString("QPushButton {"
+                                                         "    background-color:rgba(152 ,245 ,255,128);"
+                                                         "    color: #333333;"
+                                                         "    border: none;"
+                                                         "    padding: 0px;"
+                                                         "    border-radius: 5px;"
+                                                         "}"
+                                                         "QPushButton:hover {"
+                                                         "    background-color:rgba(152 ,245 ,255,200);"
+                                                         "}");
+
+    // 收集当月有记录的日期（表名即 yyyy-MM-dd 格式），仅一次枚举全部表名
+    QSet<QString> markedDays;
+    if (m_dbm) {
+        // 当月表名前缀，如 "2026-08-"
+        const QString prefix = QDate(currentDate.year(), currentDate.month(), 1).toString("yyyy-MM-");
+        const QStringList tables = m_dbm->allTableNames();
+        for (const QString &tableName : tables) {
+            // 保持原有"表存在且有记录"的判断条件
+            if (tableName.startsWith(prefix) && m_dbm->getRowCount(tableName) > 0) {
+                markedDays.insert(tableName);
+            }
+        }
+    }
+
+    // 遍历网格中的日期按钮，按是否有记录设置样式
+    for (int i = 2; i < 7; ++i) {
+        for (int j = 0; j < gridLayout->columnCount(); ++j) {
+            QLayoutItem* item = gridLayout->itemAtPosition(i, j);
+            if (item) {
+                if (QPushButton* btn = qobject_cast<QPushButton*>(item->widget())) {
+                    // 将按钮对应的日期转换为 yyyy-MM-dd 字符串
+                    QString strDay = QDate(currentDate.year(), currentDate.month(),
+                                           btn->text().toInt()).toString("yyyy-MM-dd");
+                    if (markedDays.contains(strDay)) {
+                        // 有记录则设置非空日期按钮样式
+                        btn->setStyleSheet(dayNoEmptyButtonStyle);
+                    } else {
+                        // 否则设置空日期按钮样式
+                        btn->setStyleSheet(dayEmptyButtonStyle);
+                    }
+                }
+            }
+        }
+    }
+}
 
 // 自定义日历小部件的构造函数实现
 CustomCalendarWidget::CustomCalendarWidget(QWidget* parent) : QWidget(parent)
@@ -209,9 +280,6 @@ void CustomCalendarWidget::updateCalendar()
             // 创建日期按钮
             QPushButton* dayButton = new QPushButton(QString::number(dayCounter), this);
 
-            // 应用日期按钮样式
-            emit setButtonStyle(dayButton,QDate(currentDate.year(), currentDate.month(), dayCounter));
-
             // 连接日期按钮的点击信号到dayClicked槽函数
             dayButton->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             connect(dayButton, &QPushButton::clicked, [this, dayCounter]() { dayClicked(dayCounter); });
@@ -224,6 +292,9 @@ void CustomCalendarWidget::updateCalendar()
         }
     }
 
+    // 循环结束后统一设置日期按钮样式（批量：1 次数据库枚举）
+    refreshDayStyles();
+
     // 处理当前事件队列中的所有事件，确保界面更新
     QApplication::processEvents();
 
@@ -233,18 +304,6 @@ void CustomCalendarWidget::updateCalendar()
     // 强制触发样式更新
     // 在一个单触发定时器中再次设置日期按钮的样式，确保样式更新生效
     QTimer::singleShot(0, this, [this]() {
-        for (int row = 2; row < 7; ++row) {
-            for (int col = 0; col < 7; ++col) {
-                QLayoutItem* item = gridLayout->itemAtPosition(row, col);
-                if (item) {
-                    QPushButton* btn = qobject_cast<QPushButton*>(item->widget());
-                    if (btn) {
-                        int day = btn->text().toInt();
-                        QDate date(currentDate.year(), currentDate.month(), day);
-                        emit setButtonStyle(btn, date);
-                    }
-                }
-            }
-        }
+        refreshDayStyles();
     });
 }

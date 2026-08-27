@@ -1,6 +1,6 @@
-#include "homePage.h"
+#include "pages/homePage.h"
 #include "ui_homePage.h"
-#include "mybutton.h"
+#include "widgets/mybutton.h"
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QHBoxLayout>

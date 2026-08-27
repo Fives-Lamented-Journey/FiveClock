@@ -1,6 +1,6 @@
-#include "infodialog.h"
+#include "pages/infodialog.h"
 #include "ui_infodialog.h"
-#include "mybutton.h"
+#include "widgets/mybutton.h"
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QPainter>

@@ -1,3 +1,6 @@
+# 供 clangd 等语言服务使用（配合根目录 .clangd 指向 build）
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 cmake_minimum_required(VERSION 3.16)
 
 project(FiveClock LANGUAGES CXX)
@@ -26,47 +29,69 @@ find_package(Qt6 REQUIRED COMPONENTS
 )
 
 # 源文件，完全复制你pro里的 SOURCES
+# 目录分层：src/ 实现与表单，include/ 公共头文件（与 src 平级）
+# 分层子目录：app 主窗口与全局窗口，pages 业务页面，widgets 自定义控件，db 数据层
 add_executable(FiveClock
 
-    # cpp源文件
-    card.cpp
-    chartpage.cpp
-    customcalendarwidget.cpp
-    homePage.cpp
-    infodialog.cpp
-    main.cpp
-    assempage.cpp
-    mybutton.cpp
-    petwindow.cpp
-    splashpage.cpp
-    sqldbm.cpp
-    subpage.cpp
+    # 入口
+    src/main.cpp
+
+    # cpp源文件 - app
+    src/app/assempage.cpp
+    src/app/splashpage.cpp
+    src/app/petwindow.cpp
+
+    # cpp源文件 - pages
+    src/pages/card.cpp
+    src/pages/chartpage.cpp
+    src/pages/homePage.cpp
+    src/pages/infodialog.cpp
+    src/pages/subpage.cpp
+
+    # cpp源文件 - widgets
+    src/widgets/customcalendarwidget.cpp
+    src/widgets/mybutton.cpp
+
+    # cpp源文件 - db
+    src/db/sqldbm.cpp
 
     # 头文件（CMake里HEADERS不是必须，但写上方便IDE索引）
-    assempage.h
-    card.h
-    chartpage.h
-    customcalendarwidget.h
-    homePage.h
-    infodialog.h
-    mybutton.h
-    petwindow.h
-    splashpage.h
-    sqldbm.h
-    subpage.h
+    include/app/assempage.h
+    include/app/splashpage.h
+    include/app/petwindow.h
+    include/pages/card.h
+    include/pages/chartpage.h
+    include/pages/homePage.h
+    include/pages/infodialog.h
+    include/pages/subpage.h
+    include/widgets/customcalendarwidget.h
+    include/widgets/mybutton.h
+    include/db/sqldbm.h
 
-    # UI表单 FORMS
-    assempage.ui
-    card.ui
-    chartpage.ui
-    homePage.ui
-    infodialog.ui
-    petwindow.ui
-    splashpage.ui
-    subpage.ui
+    # UI表单 FORMS（AUTOUIC 对 .ui 位置不敏感，生成的 ui_*.h 进入 autogen 全局 include 目录）
+    src/ui/assempage.ui
+    src/ui/petwindow.ui
+    src/ui/splashpage.ui
+    src/ui/card.ui
+    src/ui/chartpage.ui
+    src/ui/homePage.ui
+    src/ui/infodialog.ui
+    src/ui/subpage.ui
 
-    # 资源文件 RESOURCES += pic.qrc
+    # 资源文件 RESOURCES += pic.qrc（相对路径引用 res/，保持项目根目录）
     pic.qrc
+)
+
+# 源码按分层路径互相 include（#include "app/xxx.h" / "pages/xxx.h" / "widgets/xxx.h" / "db/xxx.h"），
+# 将公共头文件根目录加入搜索路径即可
+target_include_directories(FiveClock PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+# .ui 已集中到 src/ui，AUTOUIC 解析 cpp 中的 ui_*.h include 时
+# 除 cpp 同目录外还需在此目录查找 .ui 源文件
+set_target_properties(FiveClock PROPERTIES
+    AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
 )
 
 # Windows程序图标，对应 pro win32 { RC_ICONS = windowsIcon.ico }

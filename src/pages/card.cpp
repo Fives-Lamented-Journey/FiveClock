@@ -1,6 +1,6 @@
-#include "card.h"
+#include "pages/card.h"
 #include "ui_card.h"
-#include "mybutton.h"
+#include "widgets/mybutton.h"
 #include <QHBoxLayout>
 #include <QPushButton>
 

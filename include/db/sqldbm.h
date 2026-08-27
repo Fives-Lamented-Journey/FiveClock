@@ -40,6 +40,8 @@ public:
                                int consumTime, int counter, QString detail, QString eventClass);
     // 获取指定表中按开始时间排序的记录
     QSqlQuery sortedRecord(QString tableName);
+    // 获取数据库中全部用户表名（批量接口：供日历一次性判断哪些日期有记录）
+    QStringList allTableNames();
     // 获取指定日期中按事件分类分组并汇总消耗时间的记录
     QSqlQuery returnConsuTime(QString selectedDay);
     // 获取指定日期的汇总消耗时间记录（业务封装：表不存在时返回空查询）

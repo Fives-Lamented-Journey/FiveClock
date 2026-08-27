@@ -1,4 +1,4 @@
-#include "splashpage.h"
+#include "app/splashpage.h"
 #include "ui_splashpage.h"
 #include <QTimer>
 #include <QPropertyAnimation>

@@ -1,7 +1,7 @@
-#include "chartpage.h"
+#include "pages/chartpage.h"
 #include "ui_chartpage.h"
-#include "mybutton.h"
-#include "sqldbm.h"
+#include "widgets/mybutton.h"
+#include "db/sqldbm.h"
 #include <QtCharts>
 #include <QSqlQuery>
 #include <QVBoxLayout>

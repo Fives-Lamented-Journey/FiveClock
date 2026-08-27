@@ -1,8 +1,8 @@
-#include "assempage.h"
+#include "app/assempage.h"
 
 #include <QApplication>
 #include <QPropertyAnimation>
-#include "splashpage.h"
+#include "app/splashpage.h"
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);

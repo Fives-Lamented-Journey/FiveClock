@@ -2,9 +2,8 @@
 #define ASSEMPAGE_H
 
 #include <QWidget>
-#include "sqldbm.h"        // DBM 为值成员，需要完整类型
+#include "db/sqldbm.h"        // DBM 为值成员，需要完整类型
 #include <QSystemTrayIcon> // 槽签名使用 QSystemTrayIcon::ActivationReason 嵌套枚举
-#include <QDate>           // setDayButtonStyle(QDate) 为按值参数
 
 QT_BEGIN_NAMESPACE
 // 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
@@ -85,9 +84,6 @@ private slots:
     void assDeleteRecord(card* oneCard);
     // 添加空记录
     void assAddEmptyRecord();
-
-    // 设置日期按钮样式
-    void setDayButtonStyle(QPushButton*  dayButton,QDate day);
 
     // 处理托盘图标激活事件
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);

@@ -1,10 +1,10 @@
-#include "subpage.h"
+#include "pages/subpage.h"
 #include "ui_subpage.h"
-#include "card.h"
-#include "customcalendarwidget.h"
-#include "infodialog.h"
-#include "mybutton.h"
-#include "sqldbm.h"
+#include "pages/card.h"
+#include "widgets/customcalendarwidget.h"
+#include "pages/infodialog.h"
+#include "widgets/mybutton.h"
+#include "db/sqldbm.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QScrollBar>
