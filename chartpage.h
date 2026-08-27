@@ -2,10 +2,20 @@
 #define CHARTPAGE_H
 
 #include <QWidget>
-#include <QtCharts>
-#include <qmap.h>
-#include <qsqlquery.h>
-#include "mybutton.h"
+#include <QMap>        // data/weekData 为值成员，需要完整类型
+#include <QDate>       // selectedDay 为值成员，需要完整类型
+#include <QStringList> // selectedWeek 为值成员，需要完整类型
+
+QT_BEGIN_NAMESPACE
+// QChart 在头文件中仅以指针形式使用；完整的 QtCharts 定义在 chartpage.cpp 中包含
+class QChart;
+// QSqlQuery 仅以引用形式用于信号参数
+class QSqlQuery;
+QT_END_NAMESPACE
+
+// 项目内类型仅以指针形式使用
+class mybutton;
+class sqlDBM;
 
 // 命名空间，包含 UI 类的定义
 namespace Ui {
@@ -22,6 +32,8 @@ public:
     explicit chartPage(QWidget *parent = nullptr);
     // 析构函数
     ~chartPage();
+    // 注入数据管理对象（页面通过它直接获取统计数据，不再依赖父窗口的信号回填）
+    void setDataBase(sqlDBM *dbm);
     // 消费时间统计的图表对象指针
     QChart *consumChart;
     // 分神次数统计的图表对象指针
@@ -49,23 +61,11 @@ public:
     int getSumConsuTime();
 
     // 主页按钮对象指针
-    mybutton *homeButton = new mybutton(":/icon/res/icon/home_init.png",
-                                        ":/icon/res/icon/home_hover.png",
-                                        ":/icon/res/icon/home_pressed.png");
+    mybutton *homeButton = nullptr;
     // 卡片按钮对象指针
-    mybutton *subButton = new mybutton(":/icon/res/icon/card_ini.png",
-                                       ":/icon/res/icon/card_hover.png",
-                                       ":/icon/res/icon/card_pressed.png");
+    mybutton *subButton = nullptr;
     // 图表按钮对象指针
-    mybutton *chartButton = new mybutton(":/icon/res/icon/chartButton_pressed.png",
-                                         ":/icon/res/icon/chartButton_hover.png",
-                                         ":/icon/res/icon/chartButton_pressed.png");
-
-signals:
-    // 发射获取指定日期数据的信号
-    void getData(QSqlQuery &query, QString selectedDay);
-    // 发射获取选中周数据的信号
-    void getWeekData(QSqlQuery &query, QStringList selectedWeek);
+    mybutton *chartButton = nullptr;
 
 private slots:
     // 日期编辑框日期改变时的槽函数
@@ -74,6 +74,9 @@ private slots:
     void on_weekComboBox_currentIndexChanged(int index);
 
 private:
+    // 注入的数据管理对象指针（getData / getWeekData 信号已由 setDataBase 直调取代）
+    sqlDBM* m_dbm = nullptr;
+
     // UI 对象指针
     Ui::chartPage *ui;
 

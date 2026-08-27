@@ -1,5 +1,8 @@
 #include "card.h"
 #include "ui_card.h"
+#include "mybutton.h"
+#include <QHBoxLayout>
+#include <QPushButton>
 
 // 构造函数的实现
 card::card(QWidget *parent,int cardEventId,
@@ -16,6 +19,17 @@ card::card(QWidget *parent,int cardEventId,
 {
     // 设置 UI
     ui->setupUi(this);
+
+    // 初始化按钮（统一以 this 为 parent）
+    delButton = new mybutton(":/icon/res/icon/del_ini.png",
+                             ":/icon/res/icon/del_hover.png",
+                             ":/icon/res/icon/del_pressed.png",
+                             this);
+    updButton = new mybutton(":/icon/res/icon/alter_ini.png",
+                            ":/icon/res/icon/alter_hover.png",
+                            ":/icon/res/icon/alter_pressed.png",
+                            this);
+
     // 设置开始和结束时间的标签文本
     ui->begEndLab->setText(cardBegTime+"--"+cardEndTime);
     // 设置类别和持续时间的标签文本

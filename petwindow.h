@@ -2,11 +2,13 @@
 #define PETWINDOW_H
 
 #include <QWidget>
-#include <QLabel>
-#include <QMouseEvent>
-#include <qmenu.h>
-#include <QPainter>
-#include <QLCDNumber>
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
+class QLabel;
+class QMenu;
+class QLCDNumber;
+QT_END_NAMESPACE
 
 // 命名空间，包含用户界面类
 namespace Ui {

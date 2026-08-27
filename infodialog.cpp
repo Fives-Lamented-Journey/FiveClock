@@ -1,5 +1,9 @@
 #include "infodialog.h"
 #include "ui_infodialog.h"
+#include "mybutton.h"
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QPainter>
 #include <QDebug>
 
 // 构造函数的实现
@@ -12,6 +16,16 @@ infoDialog::infoDialog(QWidget *parent,const QString &startTime,const QString &e
 {
     // 设置 UI
     ui->setupUi(this);
+
+    // 初始化按钮（统一以 this 为 parent）
+    okButton = new mybutton(":/icon/res/icon/confirm_ini_buton.png",
+                            ":/icon/res/icon/confirm_hover_button.png",
+                            ":/icon/res/icon/confirm_pressed_pressed.png",
+                            this);
+    noButton = new mybutton(":/icon/res/icon/cancel_ini_button.png",
+                           ":/icon/res/icon/cancel_hover_button.png",
+                           ":/icon/res/icon/cancel_pressed_button.png",
+                           this);
 
     // 设置开始时间、结束时间、消耗时间、计数器值和详细信息到对应的 UI 控件
     ui->startLineEdit->setText(startTime);

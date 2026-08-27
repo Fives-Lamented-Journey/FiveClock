@@ -2,14 +2,20 @@
 #define SUBPAGE_H
 
 #include <QWidget>
-// #include "sqldbm.h"
-#include <qsqlquery.h>
-#include "card.h"
-#include <QVBoxLayout>
-#include "customcalendarwidget.h"
-#include <QPainter>
-#include "infodialog.h"
-#include <qscrollbar.h>
+#include <QDateTime>   // selectedToday 的 NSDMI 中调用了 QDateTime 静态方法
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
+class QVBoxLayout;
+class QSqlQuery;
+class QDate;
+QT_END_NAMESPACE
+
+// 项目内类型仅以指针形式使用，使用前向声明替代 include
+class card;
+class CustomCalendarWidget;
+class mybutton;
+class sqlDBM;
 
 namespace Ui {
 class subPage;
@@ -27,26 +33,20 @@ public:
     ~subPage();
 
 public:
+    // 注入数据管理对象（页面通过它直接获取记录，不再依赖父窗口的信号回填）
+    void setDataBase(sqlDBM *dbm);
     // 显示卡片记录的函数
     void showCard();
     // 选中的当前日期
     QString selectedToday = QDateTime::currentDateTime().toString("yyyy-MM-dd");
     // 主页按钮
-    mybutton *homeButton = new mybutton(":/icon/res/icon/home_init.png",
-                                        ":/icon/res/icon/home_hover.png",
-                                        ":/icon/res/icon/home_pressed.png");
+    mybutton *homeButton = nullptr;
     // 子页面按钮
-    mybutton *subButton = new mybutton(":/icon/res/icon/card_pressed.png",
-                                       ":/icon/res/icon/card_hover.png",
-                                       ":/icon/res/icon/card_pressed.png");
+    mybutton *subButton = nullptr;
     // 图表按钮
-    mybutton *chartButton = new mybutton(":/icon/res/icon/chartButton_ini.png",
-                                         ":/icon/res/icon/chartButton_hover.png",
-                                         ":/icon/res/icon/chartButton_pressed.png");
+    mybutton *chartButton = nullptr;
     // 添加记录按钮
-    mybutton *subAddRecordButton = new mybutton(":/icon/res/icon/add_ini_button.png",
-                                                ":/icon/res/icon/add_hover_button.png",
-                                                ":/icon/res/icon/add_pressed_button.png");
+    mybutton *subAddRecordButton = nullptr;
     // 自定义日历部件
     CustomCalendarWidget *calendar;
 
@@ -54,25 +54,21 @@ private:
     // 卡片部件
     card* subCard;
 
+    // 注入的数据管理对象指针（未注入时 showCard 展示空记录）
+    sqlDBM* m_dbm = nullptr;
+
     // 滚动布局
     QVBoxLayout* subScrollVbox;
     // 水平布局
     QVBoxLayout* subHbox;
     // 子部件
     QWidget*  subWidget;
-    // 信息对话框
-    infoDialog* subDialog;
-
-    // 日期时间对象
-    QDateTime subDateTime;
 
 signals:
     // 页面切换到子页面的信号
     void pageChangeToSub();
     // 页面切换到主页的信号
     void pageChangeToHome();
-    // 排序记录的信号
-    void sortedRecord(QSqlQuery& query, QString oneDay);
     // 更新记录的信号
     void updateRecord(card* oneCard);
     // 删除记录的信号

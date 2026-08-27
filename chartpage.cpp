@@ -1,5 +1,11 @@
 #include "chartpage.h"
 #include "ui_chartpage.h"
+#include "mybutton.h"
+#include "sqldbm.h"
+#include <QtCharts>
+#include <QSqlQuery>
+#include <QVBoxLayout>
+#include <QPainter>
 
 // 构造函数，初始化 chartPage 类的对象
 chartPage::chartPage(QWidget *parent)
@@ -8,6 +14,21 @@ chartPage::chartPage(QWidget *parent)
 {
     // 设置 UI
     ui->setupUi(this);
+
+    // 初始化所有 mybutton（统一以 this 为 parent，确保 Qt 自动管理生命周期）
+    homeButton = new mybutton(":/icon/res/icon/home_init.png",
+                              ":/icon/res/icon/home_hover.png",
+                              ":/icon/res/icon/home_pressed.png",
+                              this);
+    subButton = new mybutton(":/icon/res/icon/card_ini.png",
+                             ":/icon/res/icon/card_hover.png",
+                             ":/icon/res/icon/card_pressed.png",
+                             this);
+    chartButton = new mybutton(":/icon/res/icon/chartButton_pressed.png",
+                               ":/icon/res/icon/chartButton_hover.png",
+                               ":/icon/res/icon/chartButton_pressed.png",
+                               this);
+
     // 创建消费时间统计的图表对象
     consumChart = new QChart();
     // 创建分神次数统计的图表对象
@@ -52,6 +73,12 @@ chartPage::chartPage(QWidget *parent)
 chartPage::~chartPage()
 {
     delete ui;
+}
+
+// 注入数据管理对象
+void chartPage::setDataBase(sqlDBM *dbm)
+{
+    m_dbm = dbm;
 }
 
 // 绘制所有图表的函数，调用绘制柱状图和饼状图的函数
@@ -248,10 +275,12 @@ void chartPage::generateData()
     // 清空数据
     data.clear();
 
-    // 创建 SQL 查询对象
+    // 直接通过注入的数据管理对象获取指定日期的数据
+    // 未注入时（构造期 setDate 会同步触发本槽），query 保持为空 —— 与旧版信号未被连接时的行为一致
     QSqlQuery query;
-    // 发射信号，获取指定日期的数据
-    emit getData(query, selectedDay.toString("yyyy-MM-dd"));
+    if (m_dbm) {
+        query = m_dbm->consuTimeOfDay(selectedDay.toString("yyyy-MM-dd"));
+    }
 
     // 遍历查询结果，将数据插入到 data 中
     while (query.next()) {
@@ -268,10 +297,12 @@ void chartPage::generateWeekData(int index)
     // 获取选中的周
     getSelectedWeek(index);
 
-    // 创建 SQL 查询对象
+    // 直接通过注入的数据管理对象获取选中周的数据
+    // 未注入时（构造期 UI 初始化链路可能触发本槽），query 保持为空 —— 与旧版信号未被连接时的行为一致
     QSqlQuery query;
-    // 发射信号，获取选中周的数据
-    emit getWeekData(query, selectedWeek);
+    if (m_dbm) {
+        query = m_dbm->returnSumCounterTime(selectedWeek);
+    }
     // 如果查询结果为空，输出提示信息并返回
     if (!query.next()) {
         qDebug() << "generateWeekData的query的记录为空";

@@ -2,9 +2,10 @@
 #define INFODIALOG_H
 
 #include <QDialog>
-#include <qdatetime.h>
-#include "mybutton.h"
-#include <qpainter.h>
+#include <QDateTime>   // todayTimer 为值成员，需要完整类型
+
+// 项目内类型仅以指针形式使用
+class mybutton;
 
 // 定义命名空间 Ui，包含自动生成的 UI 类
 namespace Ui {
@@ -68,13 +69,9 @@ private:
     bool infoEditable;
 
     // 自定义按钮，用于确认操作
-    mybutton* okButton = new mybutton(":/icon/res/icon/confirm_ini_buton.png",
-                                      ":/icon/res/icon/confirm_hover_button.png",
-                                      ":/icon/res/icon/confirm_pressed_pressed.png",this);
+    mybutton* okButton = nullptr;
     // 自定义按钮，用于取消操作
-    mybutton* noButton = new mybutton(":/icon/res/icon/cancel_ini_button.png",
-                                      ":/icon/res/icon/cancel_hover_button.png",
-                                      ":/icon/res/icon/cancel_pressed_button.png",this);
+    mybutton* noButton = nullptr;
 
 protected:
     // 重写绘制事件处理函数，用于绘制对话框背景

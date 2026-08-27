@@ -2,11 +2,14 @@
 #define CUSTOMCALENDARWIDGET_H
 
 #include <QWidget>
-#include <QGridLayout>
-#include <QLabel>
-#include <QPushButton>
-#include <QDate>
-#include <qapplication.h>
+#include <QDate>   // currentDate 为值成员，需要完整类型
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
+class QGridLayout;
+class QLabel;
+class QPushButton;
+QT_END_NAMESPACE
 
 // 自定义日历小部件类，继承自QWidget
 // 该类用于创建一个自定义的日历界面，包含月份切换按钮和日期显示

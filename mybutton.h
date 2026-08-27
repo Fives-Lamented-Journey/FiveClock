@@ -1,9 +1,7 @@
 #ifndef MYBUTTON_H
 #define MYBUTTON_H
 
-#include <QObject>
-#include <QPushButton>
-#include <qwidget.h>
+#include <QPushButton> // 已包含 QObject / QWidget 完整定义
 
 // 自定义按钮类，继承自 QPushButton
 class mybutton : public QPushButton

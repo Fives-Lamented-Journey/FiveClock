@@ -1,5 +1,11 @@
 #include "homePage.h"
 #include "ui_homePage.h"
+#include "mybutton.h"
+#include <QTimer>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGraphicsOpacityEffect>
+#include <QPainter>
 
 // 构造函数，初始化 Widget 类的对象
 Widget::Widget(QWidget *parent)
@@ -9,8 +15,50 @@ Widget::Widget(QWidget *parent)
     // 设置 UI 界面
     ui->setupUi(this);
 
-    // 创建 QDateTime 对象，用于存储当前时间
-    m_time = new QDateTime();
+    // 初始化所有 mybutton（统一以 this 为 parent，确保 Qt 自动管理生命周期）
+    homeButton = new mybutton(":/icon/res/icon/home_pressed.png",
+                              ":/icon/res/icon/home_hover.png",
+                              ":/icon/res/icon/home_pressed.png",
+                              this);
+    subButton = new mybutton(":/icon/res/icon/card_ini.png",
+                             ":/icon/res/icon/card_hover.png",
+                             ":/icon/res/icon/card_pressed.png",
+                             this);
+    chartButton = new mybutton(":/icon/res/icon/chartButton_ini.png",
+                               ":/icon/res/icon/chartButton_hover.png",
+                               ":/icon/res/icon/chartButton_pressed.png",
+                               this);
+    startbutton = new mybutton(":/icon/res/icon/start_pressed_button.png",
+                               ":/icon/res/icon/start_hover_button.png",
+                               ":/icon/res/icon/start_pressed_button.png",
+                               this);
+    pausebutton = new mybutton(":/icon/res/icon/pause_pressed_button.png",
+                               ":/icon/res/icon/pause_hover_button.png",
+                               ":/icon/res/icon/pause_pressed_button.png",
+                               this);
+    endbutton = new mybutton(":/icon/res/icon/end_pressed_button.png",
+                             ":/icon/res/icon/end_hover_button.png",
+                             ":/icon/res/icon/end_pressed_button.png",
+                             this);
+    counterButton = new mybutton(":/icon/res/icon/count_pressed_button.png",
+                                 ":/icon/res/icon/count_hover_button.png",
+                                 ":/icon/res/icon/count_pressed_button.png",
+                                 this);
+    fullScreenButton = new mybutton(":/icon/res/icon/fullScreen_ini.png",
+                                    ":/icon/res/icon/fullScreen_hover.png",
+                                    ":/icon/res/icon/fullScreen_pressed.png",
+                                    this);
+    normalScreenButton = new mybutton(":/icon/res/icon/nomalScreen_ini.png",
+                                      ":/icon/res/icon/normalScreen_hover.png",
+                                      ":/icon/res/icon/nomalScreen_pressed.png",
+                                      this);
+    // 原实现中该按钮无 parent 且从未加入任何布局，是不可见的顶层窗口；
+    // 现补上 parent 后需显式隐藏，保持原有可见行为不变
+    normalScreenButton->hide();
+    exitButton = new mybutton(":/icon/res/icon/exit_ini.png",
+                              ":/icon/res/icon/exit_hover.png",
+                              ":/icon/res/icon/exit_pressed.png",
+                              this);
 
     // 创建计时定时器，用于刷新计时时间
     start_timer = new QTimer(this);
@@ -108,9 +156,9 @@ Widget::Widget(QWidget *parent)
     ui->nowLcd->setStyleSheet("border:none;color:white");
 
     // 连接 start_timer 的 timeout 信号到 do_start_timer_timeout 槽函数
-    connect(start_timer, SIGNAL(timeout()), this, SLOT(do_start_timer_timeout()));
+    connect(start_timer, &QTimer::timeout, this, &Widget::do_start_timer_timeout);
     // 连接 now_timer 的 timeout 信号到 do_now_timer_timeout 槽函数
-    connect(now_timer, SIGNAL(timeout()), this, SLOT(do_now_timer_timeout()));
+    connect(now_timer, &QTimer::timeout, this, &Widget::do_now_timer_timeout);
 
     // 连接 startbutton 的 clicked 信号到 onStartButtonClicked 槽函数
     connect(startbutton, &QPushButton::clicked, this, &Widget::onStartButtonClicked);
@@ -127,8 +175,6 @@ Widget::~Widget()
     delete ui;
     // 释放 start_timer 指针
     delete start_timer;
-    // 释放 m_time 指针
-    delete m_time;
 }
 
 // 显示流逝时间的函数

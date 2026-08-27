@@ -1,5 +1,18 @@
 #include "assempage.h"
 #include "ui_assempage.h"
+#include "homePage.h"
+#include "subpage.h"
+#include "chartpage.h"
+#include "card.h"
+#include "infodialog.h"
+#include "petwindow.h"
+#include "customcalendarwidget.h"
+#include "mybutton.h"
+#include <QSystemTrayIcon>
+#include <QMenu>
+#include <QApplication>
+#include <QPushButton>
+#include <QMouseEvent>
 
 // assemPage 类的构造函数，用于初始化页面和相关组件
 assemPage::assemPage(QWidget *parent)
@@ -14,9 +27,14 @@ assemPage::assemPage(QWidget *parent)
     aHomePage = new Widget(this);
     // 创建子页面实例
     aSubPage = new subPage(this);
+    // 子页面注入数据管理对象，后续直接获取记录
+    // （注意：subPage 构造期会执行一次 showCard，此时数据尚未注入，保持原有的空记录展示行为）
+    aSubPage->setDataBase(&DBM);
     qDebug() << "Entering achartpage constructor";
     // 创建图表页面实例
     aChartPage = new chartPage(this);
+    // 图表页面注入数据管理对象，供构造完成后的首次 drawChart 取数
+    aChartPage->setDataBase(&DBM);
     qDebug() << "Exiting achartpage constructor";
     // 创建系统托盘图标实例
     trayIcon = new QSystemTrayIcon(this);
@@ -67,8 +85,6 @@ assemPage::assemPage(QWidget *parent)
     // 连接图表页面的子页面按钮点击信号到页面切换槽函数
     connect(aChartPage->subButton, &QPushButton::clicked, this, &assemPage::pageChangeToSub);
 
-    // 连接子页面的排序记录信号到排序记录槽函数
-    connect(aSubPage, &subPage::sortedRecord, this, &assemPage::assSortedRecord);
     // 连接子页面的更新记录信号到更新记录槽函数
     connect(aSubPage, &subPage::updateRecord, this, &assemPage::assUpdateRecord);
     // 连接子页面的删除记录信号到删除记录槽函数
@@ -83,11 +99,6 @@ assemPage::assemPage(QWidget *parent)
     connect(aHomePage->fullScreenButton, &QPushButton::clicked, this, &assemPage::SetScreenState);
     // 连接主页面的退出按钮点击信号到退出窗口槽函数
     connect(aHomePage->exitButton, &QPushButton::clicked, this, &assemPage::exitWindow);
-
-    // 连接图表页面的获取数据信号到返回记录槽函数
-    connect(aChartPage, &chartPage::getData, this, &assemPage::assReturnRecord);
-    // 连接图表页面的获取周数据信号到返回周记录槽函数
-    connect(aChartPage, &chartPage::getWeekData, this, &assemPage::assReturnWeekRecord);
 
     // 连接托盘图标激活信号到托盘图标激活处理槽函数
     connect(trayIcon, &QSystemTrayIcon::activated, this, &assemPage::onTrayIconActivated);
@@ -211,43 +222,27 @@ void assemPage::assAddRecord()
     // 标记工作结束
     aHomePage->isWorking = false;
 
-    // 创建信息对话框实例
-    assInfoDialog = new infoDialog(this, aHomePage->startTime, aHomePage->endTime,
-                                   aHomePage->consumTime, aHomePage->counter);
+    // 创建信息对话框实例（栈对象：exec 为模态阻塞，返回后自动析构，无需手动 delete）
+    infoDialog assInfoDialog(this, aHomePage->startTime, aHomePage->endTime,
+                             aHomePage->consumTime, aHomePage->counter);
 
-    if (assInfoDialog->exec() == QDialog::Accepted)
+    if (assInfoDialog.exec() == QDialog::Accepted)
     {
         qDebug("exec01");
         // 获取当前日期
-        assInfoDialog->today = assInfoDialog->getTodayTime();
+        assInfoDialog.today = assInfoDialog.getTodayTime();
         // 获取详细信息
-        assInfoDialog->detail = assInfoDialog->getdetailText();
+        assInfoDialog.detail = assInfoDialog.getdetailText();
         // 获取分类信息
-        assInfoDialog->classfy = assInfoDialog->getclassBox();
+        assInfoDialog.classfy = assInfoDialog.getclassBox();
         // connect(assInfoDialog,&infoDialog::infoAddRecord);
         // assInfoDialog->addRecord();
         qDebug("exec02");
-        if (!DBM.tableExits(assInfoDialog->today))
-        {
-            // 如果表不存在，则创建表
-            DBM.creatTable(assInfoDialog->today);
-            // 插入数据到表中
-            DBM.insertData(assInfoDialog->today,
-                           assInfoDialog->startTime, assInfoDialog->endTime,
-                           assInfoDialog->consumTime, assInfoDialog->counter,
-                           assInfoDialog->detail, assInfoDialog->classfy);
-            qDebug("addRecord02");
-        }
-        else
-        {
-            // 插入数据到已存在的表中
-            DBM.insertData(assInfoDialog->today, assInfoDialog->startTime, assInfoDialog->endTime,
-                           assInfoDialog->consumTime, assInfoDialog->counter, assInfoDialog->detail,
-                           assInfoDialog->classfy);
-            qDebug("addRecord03");
-        }
-        // 释放信息对话框资源
-        delete assInfoDialog;
+        // 插入记录（表不存在时自动创建）
+        DBM.insertDataEnsureTable(assInfoDialog.today,
+                                  assInfoDialog.startTime, assInfoDialog.endTime,
+                                  assInfoDialog.consumTime, assInfoDialog.counter,
+                                  assInfoDialog.detail, assInfoDialog.classfy);
         // 更新日历
         aSubPage->calendar->updateCalendar();
         // 绘制饼图
@@ -256,8 +251,6 @@ void assemPage::assAddRecord()
     else
     {
         qDebug("exec02");
-        // 释放信息对话框资源
-        delete assInfoDialog;
     }
 }
 
@@ -287,56 +280,40 @@ void assemPage::assDeleteRecord(card *oneCard)
 // 添加空记录
 void assemPage::assAddEmptyRecord()
 {
-    // 创建信息对话框实例，用于添加空记录
-    assInfoDialog = new infoDialog(this, "", "", 0, 0, "", true);
+    // 创建信息对话框实例（栈对象：exec 为模态阻塞，返回后自动析构，无需手动 delete）
+    infoDialog assInfoDialog(this, "", "", 0, 0, "", true);
 
-    if (assInfoDialog->exec() == QDialog::Accepted)
+    if (assInfoDialog.exec() == QDialog::Accepted)
     {
         qDebug("exec01");
         // 获取子页面选择的日期
-        assInfoDialog->today = aSubPage->selectedToday;
+        assInfoDialog.today = aSubPage->selectedToday;
 
         // 获取开始时间
-        assInfoDialog->startTime = assInfoDialog->getstartLine();
+        assInfoDialog.startTime = assInfoDialog.getstartLine();
         // 获取结束时间
-        assInfoDialog->endTime = assInfoDialog->getendLine();
+        assInfoDialog.endTime = assInfoDialog.getendLine();
         // 获取消耗时间
-        assInfoDialog->consumTime = assInfoDialog->getconsumBox();
+        assInfoDialog.consumTime = assInfoDialog.getconsumBox();
         // 获取计数器值
-        assInfoDialog->counter = assInfoDialog->getcounterBox();
+        assInfoDialog.counter = assInfoDialog.getcounterBox();
         // 获取分类信息
-        assInfoDialog->classfy = assInfoDialog->getclassBox();
+        assInfoDialog.classfy = assInfoDialog.getclassBox();
         // 获取详细信息
-        assInfoDialog->detail = assInfoDialog->getdetailText();
+        assInfoDialog.detail = assInfoDialog.getdetailText();
 
-        qDebug() << assInfoDialog->today;
-        qDebug() << assInfoDialog->detail;
-        qDebug() << assInfoDialog->classfy;
+        qDebug() << assInfoDialog.today;
+        qDebug() << assInfoDialog.detail;
+        qDebug() << assInfoDialog.classfy;
         // connect(assInfoDialog,&infoDialog::infoAddRecord,);
         // assInfoDialog->addRecord();
-        if (!DBM.tableExits(assInfoDialog->today))
-        {
-            // 如果表不存在，则创建表
-            DBM.creatTable(assInfoDialog->today);
-            // 插入数据到表中
-            DBM.insertData(assInfoDialog->today,
-                           assInfoDialog->startTime, assInfoDialog->endTime,
-                           assInfoDialog->consumTime, assInfoDialog->counter,
-                           assInfoDialog->detail, assInfoDialog->classfy);
-            qDebug("addRecord02");
-        }
-        else
-        {
-            // 插入数据到已存在的表中
-            DBM.insertData(assInfoDialog->today, assInfoDialog->startTime, assInfoDialog->endTime,
-                           assInfoDialog->consumTime, assInfoDialog->counter, assInfoDialog->detail,
-                           assInfoDialog->classfy);
-            qDebug("addRecord03");
-        }
+        // 插入记录（表不存在时自动创建）
+        DBM.insertDataEnsureTable(assInfoDialog.today,
+                                  assInfoDialog.startTime, assInfoDialog.endTime,
+                                  assInfoDialog.consumTime, assInfoDialog.counter,
+                                  assInfoDialog.detail, assInfoDialog.classfy);
         // 显示卡片
         aSubPage->showCard();
-        // 释放信息对话框资源
-        delete assInfoDialog;
         // 更新日历
         aSubPage->calendar->updateCalendar();
         aChartPage->drawChart();
@@ -344,37 +321,7 @@ void assemPage::assAddEmptyRecord()
     else
     {
         qDebug("exec02");
-        // 释放信息对话框资源
-        delete assInfoDialog;
     }
-}
-
-// 对记录进行排序
-void assemPage::assSortedRecord(QSqlQuery &query, QString oneDay)
-{
-    // 调用数据库管理类的排序记录方法
-    query = DBM.sortedRecord(oneDay);
-}
-
-// 返回指定日期的记录
-void assemPage::assReturnRecord(QSqlQuery &query, QString selectedDay)
-{
-    if (!DBM.tableExits(selectedDay))
-    {
-        // 如果表不存在，则返回空查询
-        query = QSqlQuery();
-        return;
-    }
-    qDebug() << "assReturnRecord called with selectedDay:" << selectedDay;
-    // 调用数据库管理类的返回消耗时间记录方法
-    query = DBM.returnConsuTime(selectedDay);
-}
-
-// 返回指定周的记录
-void assemPage::assReturnWeekRecord(QSqlQuery &query, QStringList selectedWeek)
-{
-    // 调用数据库管理类的返回周总计时间记录方法
-    query = DBM.returnSumCounterTime(selectedWeek);
 }
 
 // 设置日期按钮样式

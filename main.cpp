@@ -1,14 +1,15 @@
 #include "assempage.h"
 
 #include <QApplication>
+#include <QPropertyAnimation>
 #include "splashpage.h"
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    splashPage* splash=new splashPage();
+    splashPage* splash = new splashPage();
     assemPage w;
-    QPropertyAnimation *fadeInAnimation = new QPropertyAnimation(&w, "windowOpacity");
+    QPropertyAnimation *fadeInAnimation = new QPropertyAnimation(&w, "windowOpacity", qApp);
     fadeInAnimation->setDuration(500);
     fadeInAnimation->setStartValue(0.0);
     fadeInAnimation->setEndValue(1.0);

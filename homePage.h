@@ -2,19 +2,17 @@
 #define HOMEPAGE_H
 
 #include <QWidget>
-#include <qsqldatabase.h>
-#include <qdatawidgetmapper>
-#include <QDate>
-#include <qelapsedtimer>
-#include <qtimer.h>
-#include <QTime>
-#include <qsqlerror.h>
-#include <qsqlquery.h>
-#include <QPainter>
-#include <mybutton.h>
-#include <QGraphicsOpacityEffect>
-#include <infodialog.h>
-#include <QSystemTrayIcon>
+#include <QElapsedTimer>   // counterTimer 为值成员，需要完整类型
+#include <QDateTime>       // m_time 为值成员，需要完整类型
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
+class QTimer;
+QT_END_NAMESPACE
+
+// 项目内类型仅以指针形式使用，使用前向声明替代 include
+class mybutton;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class Widget;
@@ -26,9 +24,6 @@ class Widget : public QWidget
 {
     Q_OBJECT
 private:
-    // infoDialog 指针，用于显示信息对话框
-    infoDialog *m_infoDialog;
-
     // start 定时器，用于刷新记录流逝时间的 LCD
     QTimer* start_timer;
     // now 定时器，用于刷新记录当前时间的 LCD
@@ -40,8 +35,8 @@ private:
     int elpasedMin;
     int elpasedseconds;
 
-    // 存储当前日期和时间的指针
-    QDateTime * m_time;
+    // 存储当前日期和时间（栈对象，无需手动释放）
+    QDateTime m_time;
     // 记录流逝的毫秒数
     qint64 mseconds;
     // 记录暂停时已经流逝的时间
@@ -90,52 +85,27 @@ public:
     // 计数器
     int counter;
     // 主页按钮
-    mybutton *homeButton = new mybutton(":/icon/res/icon/home_pressed.png",
-                                        ":/icon/res/icon/home_hover.png",
-                                        ":/icon/res/icon/home_pressed.png",
-                                        this);
+    mybutton *homeButton = nullptr;
     // 子页面按钮
-    mybutton *subButton = new mybutton(":/icon/res/icon/card_ini.png",
-                                       ":/icon/res/icon/card_hover.png",
-                                       ":/icon/res/icon/card_pressed.png",
-                                       this);
+    mybutton *subButton = nullptr;
     // 图表按钮
-    mybutton *chartButton = new mybutton(":/icon/res/icon/chartButton_ini.png",
-                                         ":/icon/res/icon/chartButton_hover.png",
-                                         ":/icon/res/icon/chartButton_pressed.png");
+    mybutton *chartButton = nullptr;
     // 开始按钮
-    mybutton *startbutton = new mybutton(":/icon/res/icon/start_pressed_button.png",
-                                         ":/icon/res/icon/start_hover_button.png",
-                                         ":/icon/res/icon/start_pressed_button.png",
-                                         this);
+    mybutton *startbutton = nullptr;
     // 暂停按钮
-    mybutton *pausebutton = new mybutton(":/icon/res/icon/pause_pressed_button.png",
-                                         ":/icon/res/icon/pause_hover_button.png",
-                                         ":/icon/res/icon/pause_pressed_button.png",
-                                         this);
+    mybutton *pausebutton = nullptr;
     // 结束按钮
-    mybutton *endbutton = new mybutton(":/icon/res/icon/end_pressed_button.png",
-                                       ":/icon/res/icon/end_hover_button.png",
-                                       ":/icon/res/icon/end_pressed_button.png",
-                                       this);
+    mybutton *endbutton = nullptr;
     // 计数按钮
-    mybutton *counterButton = new mybutton(":/icon/res/icon/count_pressed_button.png",
-                                           ":/icon/res/icon/count_hover_button.png",
-                                           ":/icon/res/icon/count_pressed_button.png");
+    mybutton *counterButton = nullptr;
     // 设置屏幕状态的按钮
-    mybutton *setScreenStateButton;
+    mybutton *setScreenStateButton = nullptr;
     // 全屏按钮
-    mybutton *fullScreenButton = new mybutton(":/icon/res/icon/fullScreen_ini.png",
-                                              ":/icon/res/icon/fullScreen_hover.png",
-                                              ":/icon/res/icon/fullScreen_pressed.png");
+    mybutton *fullScreenButton = nullptr;
     // 正常屏幕按钮
-    mybutton *normalScreenButton = new mybutton(":/icon/res/icon/nomalScreen_ini.png",
-                                                ":/icon/res/icon/normalScreen_hover.png",
-                                                ":/icon/res/icon/nomalScreen_pressed.png");
+    mybutton *normalScreenButton = nullptr;
     // 退出按钮
-    mybutton *exitButton = new mybutton(":/icon/res/icon/exit_ini.png",
-                                        ":/icon/res/icon/exit_hover.png",
-                                        ":/icon/res/icon/exit_pressed.png");
+    mybutton *exitButton = nullptr;
 
 signals:
     // 当 LCD 显示的时间改变时发出的信号

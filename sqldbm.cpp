@@ -1,4 +1,6 @@
 #include "sqldbm.h"
+#include <QTime>
+#include <QSqlError>   // lastError().text() 需要完整类型
 
 // 构造函数，初始化数据库连接
 sqlDBM::sqlDBM() {
@@ -20,27 +22,6 @@ sqlDBM::~sqlDBM()
     // 仅关闭连接，不 removeDatabase
     if (DB.isOpen()) {
         DB.close();
-    }
-}
-
-// 打开数据库，当前函数体为空
-void sqlDBM::openDataBase() {
-
-}
-
-// 关闭数据库连接
-void sqlDBM::closeDateBase()
-{
-    // 若数据库处于打开状态，则关闭连接
-    if (DB.isOpen()) {
-        DB.close();
-    }
-    // 检查数据库是否成功关闭
-    if (!DB.isOpen()) {
-        qDebug() << "Database connection is closed.";
-    } else {
-        qDebug() << "Failed to close database connection.";
-        qDebug() << "Failed to open database:" << DB.lastError().text();
     }
 }
 
@@ -115,6 +96,26 @@ void sqlDBM::insertData(QString tableName, QString startTime, QString endTime,
     if (!query.exec()) {
         // 若插入失败，输出错误信息
         qDebug() << "插入数据失败: " << query.lastError().text();
+    }
+}
+
+// 向指定表中插入数据（若表不存在则先创建）
+void sqlDBM::insertDataEnsureTable(QString tableName, QString startTime, QString endTime,
+                                   int consumTime, int counter, QString detail, QString eventClass)
+{
+    if (!tableExits(tableName))
+    {
+        // 如果表不存在，则创建表
+        creatTable(tableName);
+        // 插入数据到表中
+        insertData(tableName, startTime, endTime, consumTime, counter, detail, eventClass);
+        qDebug("addRecord02");
+    }
+    else
+    {
+        // 插入数据到已存在的表中
+        insertData(tableName, startTime, endTime, consumTime, counter, detail, eventClass);
+        qDebug("addRecord03");
     }
 }
 
@@ -207,19 +208,18 @@ QSqlQuery sqlDBM::returnConsuTime(QString selectedDay)
     return query;
 }
 
-// 获取指定日期的总消耗时间
-int sqlDBM::returnSumConsuTime(QString selectedDay)
+// 获取指定日期的汇总消耗时间记录（业务封装：表不存在时返回空查询）
+QSqlQuery sqlDBM::consuTimeOfDay(const QString &selectedDay)
 {
-    QSqlQuery query;
-    // 构建汇总消耗时间的 SQL 语句
-    QString sumConsuTime = QString("SELECT SUM(consumTime) FROM `%1`").arg(selectedDay);
-    // 执行查询操作
-    if (!query.exec(sumConsuTime)) {
-        // 若查询失败，输出错误信息
-        qDebug() << "汇总消耗时间失败: " << query.lastError().text();
+    QString day = selectedDay;
+    if (!tableExits(day))
+    {
+        // 如果表不存在，则返回空查询
+        return QSqlQuery();
     }
-    // 返回查询结果的整数值
-    return query.value(0).toInt();
+    qDebug() << "assReturnRecord called with selectedDay:" << day;
+    // 调用数据库管理类的返回消耗时间记录方法
+    return returnConsuTime(day);
 }
 
 // 获取指定一周内每天的总计数时间

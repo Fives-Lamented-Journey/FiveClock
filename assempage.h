@@ -2,12 +2,24 @@
 #define ASSEMPAGE_H
 
 #include <QWidget>
-#include "homePage.h"
-#include "subpage.h"
-#include "sqldbm.h"
-#include "chartpage.h"
-#include  <QMouseEvent>
-#include "petwindow.h"
+#include "sqldbm.h"        // DBM 为值成员，需要完整类型
+#include <QSystemTrayIcon> // 槽签名使用 QSystemTrayIcon::ActivationReason 嵌套枚举
+#include <QDate>           // setDayButtonStyle(QDate) 为按值参数
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
+class QMenu;
+class QSqlQuery;
+class QPushButton;
+QT_END_NAMESPACE
+
+// 项目内类型仅以指针形式使用，使用前向声明替代 include
+class Widget;
+class subPage;
+class chartPage;
+class card;
+class petwindow;
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class assemPage;
@@ -26,7 +38,7 @@ public:
     ~assemPage();
 
     // 创建托盘图标菜单
-    void createTrayIconMenu();;
+    void createTrayIconMenu();
 
 private:
     // 主页面指针
@@ -35,8 +47,6 @@ private:
     subPage* aSubPage;
     // 图表页面指针
     chartPage* aChartPage;
-    // 信息对话框指针
-    infoDialog * assInfoDialog;
 
     // 数据库管理类实例
     sqlDBM DBM;
@@ -75,14 +85,6 @@ private slots:
     void assDeleteRecord(card* oneCard);
     // 添加空记录
     void assAddEmptyRecord();
-
-    // 对记录进行排序
-    void assSortedRecord(QSqlQuery& query,QString oneDay);
-
-    // 返回指定日期的记录
-    void assReturnRecord(QSqlQuery& query,QString selectedDay);
-    // 返回指定周的记录
-    void assReturnWeekRecord(QSqlQuery& query,QStringList selectedWeek);
 
     // 设置日期按钮样式
     void setDayButtonStyle(QPushButton*  dayButton,QDate day);

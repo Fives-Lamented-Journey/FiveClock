@@ -1,5 +1,10 @@
 #include "splashpage.h"
 #include "ui_splashpage.h"
+#include <QTimer>
+#include <QPropertyAnimation>
+#include <QRandomGenerator>
+#include <QFontDatabase>
+#include <QPainter>
 
 // 构造函数的实现
 splashPage::splashPage(QWidget *parent)

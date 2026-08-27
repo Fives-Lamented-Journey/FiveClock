@@ -1,5 +1,16 @@
 #include "subpage.h"
 #include "ui_subpage.h"
+#include "card.h"
+#include "customcalendarwidget.h"
+#include "infodialog.h"
+#include "mybutton.h"
+#include "sqldbm.h"
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QScrollBar>
+#include <QSqlQuery>
+#include <QDate>
+#include <QPainter>
 
 // 构造函数，初始化子页面
 subPage::subPage(QWidget *parent)
@@ -7,6 +18,24 @@ subPage::subPage(QWidget *parent)
     , ui(new Ui::subPage)
 {
     ui->setupUi(this);
+
+    // 初始化所有 mybutton（统一以 this 为 parent，确保 Qt 自动管理生命周期）
+    homeButton = new mybutton(":/icon/res/icon/home_init.png",
+                              ":/icon/res/icon/home_hover.png",
+                              ":/icon/res/icon/home_pressed.png",
+                              this);
+    subButton = new mybutton(":/icon/res/icon/card_pressed.png",
+                             ":/icon/res/icon/card_hover.png",
+                             ":/icon/res/icon/card_pressed.png",
+                             this);
+    chartButton = new mybutton(":/icon/res/icon/chartButton_ini.png",
+                               ":/icon/res/icon/chartButton_hover.png",
+                               ":/icon/res/icon/chartButton_pressed.png",
+                               this);
+    subAddRecordButton = new mybutton(":/icon/res/icon/add_ini_button.png",
+                                      ":/icon/res/icon/add_hover_button.png",
+                                      ":/icon/res/icon/add_pressed_button.png",
+                                      this);
 
     // 创建自定义日历部件
     calendar = new CustomCalendarWidget(this);
@@ -68,6 +97,12 @@ subPage::~subPage()
     delete ui;
 }
 
+// 注入数据管理对象
+void subPage::setDataBase(sqlDBM *dbm)
+{
+    m_dbm = dbm;
+}
+
 // 显示卡片记录的函数
 void subPage::showCard()
 {
@@ -90,8 +125,11 @@ void subPage::showCard()
     QString subClass;
 
     QSqlQuery query;
-    // 发出排序记录的信号
-    emit sortedRecord(query, selectedToday);
+    if (m_dbm) {
+        // 直接通过注入的数据管理对象获取当日记录
+        query = m_dbm->sortedRecord(selectedToday);
+    }
+    // 未注入数据管理对象时（如构造期首次刷新），query 保持为空，展示空记录提示
     qDebug() << "sortedRecordover";
 
     // 如果查询结果为空
@@ -153,28 +191,28 @@ void subPage::subUpdateCardList(const QDate &date)
 // 更新卡片信息的函数
 void subPage::subUpdateCard(card *oneCard)
 {
-    // 创建信息对话框
-    subDialog = new infoDialog(this, oneCard->cardBegTime, oneCard->cardEndTime,
-                               oneCard->cardConsuTime, oneCard->cardcounter,
-                               oneCard->cardDetail, true);
+    // 创建信息对话框（栈对象：exec 为模态阻塞，返回后自动析构，无需手动 delete）
+    infoDialog subDialog(this, oneCard->cardBegTime, oneCard->cardEndTime,
+                         oneCard->cardConsuTime, oneCard->cardcounter,
+                         oneCard->cardDetail, true);
 
     // 如果对话框以接受方式关闭
-    if (subDialog->exec() == QDialog::Accepted)
+    if (subDialog.exec() == QDialog::Accepted)
     {
-        qDebug() << subDialog->getstartLine();
-        qDebug() << subDialog->getendLine();
-        qDebug() << subDialog->getconsumBox();
-        qDebug() << subDialog->getcounterBox();
-        qDebug() << subDialog->getclassBox();
-        qDebug() << subDialog->getdetailText();
+        qDebug() << subDialog.getstartLine();
+        qDebug() << subDialog.getendLine();
+        qDebug() << subDialog.getconsumBox();
+        qDebug() << subDialog.getcounterBox();
+        qDebug() << subDialog.getclassBox();
+        qDebug() << subDialog.getdetailText();
 
         // 更新卡片信息
-        oneCard->cardBegTime = subDialog->getstartLine();
-        oneCard->cardEndTime = subDialog->getendLine();
-        oneCard->cardConsuTime = subDialog->getconsumBox();
-        oneCard->cardcounter = subDialog->getcounterBox();
-        oneCard->cardClass = subDialog->getclassBox();
-        oneCard->cardDetail = subDialog->getdetailText();
+        oneCard->cardBegTime = subDialog.getstartLine();
+        oneCard->cardEndTime = subDialog.getendLine();
+        oneCard->cardConsuTime = subDialog.getconsumBox();
+        oneCard->cardcounter = subDialog.getcounterBox();
+        oneCard->cardClass = subDialog.getclassBox();
+        oneCard->cardDetail = subDialog.getdetailText();
 
         // 发出更新记录的信号
         emit updateRecord(oneCard);
@@ -183,9 +221,6 @@ void subPage::subUpdateCard(card *oneCard)
         // 重绘页面
         repaint();
     }
-
-    // 删除信息对话框
-    delete subDialog;
 }
 
 // 删除卡片信息的函数

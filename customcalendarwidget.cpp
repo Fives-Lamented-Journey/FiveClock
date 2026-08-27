@@ -1,4 +1,8 @@
 #include "customcalendarwidget.h"
+#include <QGridLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QApplication>
 #include <QDebug>
 #include <qtimer.h>
 

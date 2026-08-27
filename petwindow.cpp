@@ -1,5 +1,11 @@
 #include "petwindow.h"
 #include "ui_petwindow.h"
+#include <QLabel>
+#include <QMenu>
+#include <QLCDNumber>
+#include <QPainter>
+#include <QApplication>
+#include <QMouseEvent>
 
 // 宠物窗口类的构造函数，接收一个父窗口指针作为参数
 petwindow::petwindow(QWidget *parent)

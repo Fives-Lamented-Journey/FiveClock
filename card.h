@@ -2,9 +2,15 @@
 #define CARD_H
 
 #include <QWidget>
-#include <QHBoxLayout>
-#include "mybutton.h"
-#include "infodialog.h"
+
+QT_BEGIN_NAMESPACE
+// QHBoxLayout 在头文件中仅以指针形式使用
+class QHBoxLayout;
+QT_END_NAMESPACE
+
+// 项目内类型仅以指针形式使用
+class mybutton;
+
 namespace Ui {
 class card;
 }
@@ -64,19 +70,13 @@ private slots:
 
 private:
     // 删除按钮，使用自定义的 mybutton 类
-    mybutton* delButton=new mybutton(":/icon/res/icon/del_ini.png",
-                                       ":/icon/res/icon/del_hover.png",
-                                       ":/icon/res/icon/del_pressed.png");
+    mybutton* delButton = nullptr;
     // 更新按钮，使用自定义的 mybutton 类
-    mybutton* updButton=new mybutton(":/icon/res/icon/alter_ini.png",
-                                       ":/icon/res/icon/alter_hover.png",
-                                       ":/icon/res/icon/alter_pressed.png");
+    mybutton* updButton = nullptr;
 
 private:
     // 水平布局，用于管理删除和更新按钮
     QHBoxLayout* cardHbox;
-    // 信息对话框指针
-    infoDialog* cardDialog;
 
 private:
     // UI 指针，用于访问 UI 设计文件中的控件

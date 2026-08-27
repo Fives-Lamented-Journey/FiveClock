@@ -2,11 +2,13 @@
 #define SPLASHPAGE_H
 
 #include <QWidget>
-#include <QRandomGenerator>
-#include <qtimer.h>
-#include <qpainter.h>
-#include <QPropertyAnimation>
-#include <QFontDatabase>
+#include <QStringList> // sentence/backImage 为值成员且带 NSDMI 初始化，需要完整类型
+
+QT_BEGIN_NAMESPACE
+// 以下 Qt 类型在头文件中仅以指针形式使用，使用前向声明降低编译依赖
+class QTimer;
+class QPropertyAnimation;
+QT_END_NAMESPACE
 
 // 命名空间 Ui，用于包含由 Qt Designer 生成的界面类
 namespace Ui {
