@@ -12,7 +12,7 @@ class QPushButton;
 QT_END_NAMESPACE
 
 // 项目内类型仅以指针形式使用
-class sqlDBM;
+class RecordService;
 
 // 自定义日历小部件类，继承自QWidget
 // 该类用于创建一个自定义的日历界面，包含月份切换按钮和日期显示
@@ -38,8 +38,8 @@ public:
     // 根据当前显示的日期更新日历界面，包括月份显示和日期按钮的创建
     void updateCalendar();
 
-    // 注入数据管理对象，用于批量查询哪些日期有记录
-    void setDataBase(sqlDBM *dbm);
+    // 注入记录业务服务：部件通过它批量查询有记录日期、订阅 dataChanged 信号（不再依赖 sqlDBM）
+    void setRecordService(RecordService *service);
 
 signals:
     // 信号：当用户选择一个日期时发出，携带所选日期信息
@@ -59,6 +59,9 @@ private slots:
     // 处理日期按钮点击事件
     // 当用户点击某个日期按钮时，调用该函数发出dateSelected信号并打印所选日期
     void dayClicked(int day);
+
+    // 数据变更通知的响应槽：更新日历显示与日期按钮样式（由 RecordService::dataChanged 驱动）
+    void onDataChanged();
 
 private:
     // 批量刷新日期按钮样式：一次枚举当月有记录的日期集合后统一设置，
@@ -86,8 +89,8 @@ private:
     // 记录当前日历所显示的月份和年份
     QDate currentDate;
 
-    // 数据管理对象（由 assemPage 注入，未注入时全部按钮按无记录样式展示）
-    sqlDBM *m_dbm = nullptr;
+    // 记录业务服务（由 assemPage 注入，未注入时全部按钮按无记录样式展示）
+    RecordService *m_recordService = nullptr;
 };
 
 #endif // CUSTOMCALENDARWIDGET_H

@@ -55,6 +55,12 @@ add_executable(FiveClock
     # cpp源文件 - db
     src/db/sqldbm.cpp
 
+    # cpp源文件 - service 业务服务层
+    src/service/record_service.cpp
+
+    # cpp源文件 - timer 计时模型
+    src/timer/timermodel.cpp
+
     # 头文件（CMake里HEADERS不是必须，但写上方便IDE索引）
     include/app/assempage.h
     include/app/splashpage.h
@@ -67,6 +73,8 @@ add_executable(FiveClock
     include/widgets/customcalendarwidget.h
     include/widgets/mybutton.h
     include/db/sqldbm.h
+    include/service/record_service.h
+    include/timer/timermodel.h
 
     # UI表单 FORMS（AUTOUIC 对 .ui 位置不敏感，生成的 ui_*.h 进入 autogen 全局 include 目录）
     src/ui/assempage.ui

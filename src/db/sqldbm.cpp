@@ -101,7 +101,10 @@ void sqlDBM::insertData(QString tableName, QString startTime, QString endTime,
     if (!query.exec()) {
         // 若插入失败，输出错误信息
         qDebug() << "插入数据失败: " << query.lastError().text();
+        return;
     }
+    // 插入成功：发出数据变更通知（insertDataEnsureTable 复用本函数，无需重复发送）
+    emit dataChanged();
 }
 
 // 向指定表中插入数据（若表不存在则先创建）
@@ -141,7 +144,10 @@ void sqlDBM::deleteRecord(QString tableName, int eventId) {
     if (!query.exec()) {
         // 若删除失败，输出错误信息
         qDebug() << "删除记录失败: " << query.lastError().text();
+        return;
     }
+    // 删除成功：发出数据变更通知
+    emit dataChanged();
 }
 
 // 更新指定表中指定事件 ID 的记录
@@ -173,7 +179,10 @@ void sqlDBM::updateRecord(QString tableName, int eventId, QString startTime, QSt
     if (!query.exec()) {
         // 若更新失败，输出错误信息
         qDebug() << "更新记录失败: " << query.lastError().text();
+        return;
     }
+    // 更新成功：发出数据变更通知
+    emit dataChanged();
 }
 
 // 获取指定表中按开始时间排序的记录

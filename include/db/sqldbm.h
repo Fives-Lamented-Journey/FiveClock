@@ -59,6 +59,12 @@ public:
 private:
     // 数据库对象
     QSqlDatabase DB;
+
+signals:
+    // 数据变更通知：任何记录 INSERT / UPDATE / DELETE 成功后发出（过渡方案：
+    // 各视图通过 setDataBase 注入点直连此信号自行刷新，替代父窗口零散的手动刷新调用；
+    // 后续迭代引入 RecordService 时该职责上移）
+    void dataChanged();
 };
 
 #endif // SQLDBM_H

@@ -9,13 +9,11 @@
 QT_BEGIN_NAMESPACE
 // QChart 在头文件中仅以指针形式使用；完整的 QtCharts 定义在 chartpage.cpp 中包含
 class QChart;
-// QSqlQuery 仅以引用形式用于信号参数
-class QSqlQuery;
 QT_END_NAMESPACE
 
 // 项目内类型仅以指针形式使用
 class mybutton;
-class sqlDBM;
+class RecordService;
 
 // 命名空间，包含 UI 类的定义
 namespace Ui {
@@ -32,8 +30,8 @@ public:
     explicit chartPage(QWidget *parent = nullptr);
     // 析构函数
     ~chartPage();
-    // 注入数据管理对象（页面通过它直接获取统计数据，不再依赖父窗口的信号回填）
-    void setDataBase(sqlDBM *dbm);
+    // 注入记录业务服务：页面通过它获取统计数据、订阅 dataChanged 信号（不再依赖 sqlDBM）
+    void setRecordService(RecordService *service);
     // 消费时间统计的图表对象指针
     QChart *consumChart;
     // 分神次数统计的图表对象指针
@@ -72,10 +70,12 @@ private slots:
     void on_selectedDateEdit_userDateChanged(const QDate &date);
     // 周选择下拉框选中项改变时的槽函数
     void on_weekComboBox_currentIndexChanged(int index);
+    // 数据变更通知的响应槽：重新绘制全部图表（由 RecordService::dataChanged 驱动）
+    void refreshCharts();
 
 private:
-    // 注入的数据管理对象指针（getData / getWeekData 信号已由 setDataBase 直调取代）
-    sqlDBM* m_dbm = nullptr;
+    // 注入的记录业务服务指针（未注入时取数为空，与旧版信号未被连接时的行为一致）
+    RecordService* m_recordService = nullptr;
 
     // UI 对象指针
     Ui::chartPage *ui;

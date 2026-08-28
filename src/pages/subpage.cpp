@@ -4,11 +4,10 @@
 #include "widgets/customcalendarwidget.h"
 #include "pages/infodialog.h"
 #include "widgets/mybutton.h"
-#include "db/sqldbm.h"
+#include "service/record_service.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QScrollBar>
-#include <QSqlQuery>
 #include <QDate>
 #include <QPainter>
 
@@ -97,10 +96,22 @@ subPage::~subPage()
     delete ui;
 }
 
-// 注入数据管理对象
-void subPage::setDataBase(sqlDBM *dbm)
+// 注入记录业务服务：页面通过它查询记录、订阅 dataChanged 信号，不再直连 dbm
+void subPage::setRecordService(RecordService *service)
 {
-    m_dbm = dbm;
+    // 保存指针供 showCard 查询使用（构造期未注入时展示空记录）
+    m_recordService = service;
+    // UniqueConnection 防御重复注入导致的重复刷新；context 为 this，析构时自动断开
+    connect(service, &RecordService::dataChanged, this, &subPage::refreshCards, Qt::UniqueConnection);
+}
+
+// 数据变更通知的响应槽：刷新当前日期的卡片列表
+void subPage::refreshCards()
+{
+    // 显示卡片记录
+    showCard();
+    // 重绘页面
+    repaint();
 }
 
 // 显示卡片记录的函数
@@ -116,26 +127,17 @@ void subPage::showCard()
         delete item;
     }
 
-    int subEventId;
-    QString subBegTime;
-    QString subEndTime;
-    int subConsuTime;
-    int subCounter;
-    QString subDetail;
-    QString subClass;
-
-    QSqlQuery query;
-    if (m_dbm) {
-        // 直接通过注入的数据管理对象获取当日记录
-        query = m_dbm->sortedRecord(selectedToday);
+    // 通过业务服务层获取当日记录（未注入服务时为空列表，展示空记录提示）
+    QVector<TimeRecord> records;
+    if (m_recordService) {
+        records = m_recordService->queryRecordsOfDay(QDate::fromString(selectedToday, "yyyy-MM-dd"));
     }
-    // 未注入数据管理对象时（如构造期首次刷新），query 保持为空，展示空记录提示
     qDebug() << "sortedRecordover";
 
-    // 如果查询结果为空
-    if (query.size() == 0)
+    // 如果记录为空
+    if (records.isEmpty())
     {
-        qDebug() << "query.size=0";
+        qDebug() << "records is empty";
         // 创建提示标签
         QLabel *tipLab = new QLabel();
         tipLab->setText("记录为空,主人要记得坚持记录哦");
@@ -147,19 +149,12 @@ void subPage::showCard()
         subScrollVbox->addWidget(tipLab);
     }
 
-    // 遍历查询结果
-    while (query.next()) {
-        subEventId = query.value(0).toInt();
-        subBegTime = query.value(1).toString();
-        subEndTime = query.value(2).toString();
-        subConsuTime = query.value(3).toInt();
-        subCounter = query.value(4).toInt();
-        subDetail = query.value(5).toString();
-        subClass = query.value(6).toString();
-
+    // 遍历记录
+    for (const TimeRecord &record : records) {
         // 创建卡片部件
-        subCard = new card(this, subEventId, subBegTime, subEndTime, subConsuTime,
-                           subCounter, subDetail, subClass, selectedToday);
+        subCard = new card(this, record.eventId, record.begTime, record.endTime,
+                           record.consumTime, record.counter, record.detail,
+                           record.eventClass, selectedToday);
 
         // 连接卡片更新信号到更新卡片的槽函数
         connect(subCard, &card::upCardInfo, this, &subPage::subUpdateCard);
@@ -214,24 +209,16 @@ void subPage::subUpdateCard(card *oneCard)
         oneCard->cardClass = subDialog.getclassBox();
         oneCard->cardDetail = subDialog.getdetailText();
 
-        // 发出更新记录的信号
+        // 发出更新记录的信号（写库成功后由 dataChanged 通知触发 refreshCards 刷新）
         emit updateRecord(oneCard);
-        // 显示卡片记录
-        showCard();
-        // 重绘页面
-        repaint();
     }
 }
 
 // 删除卡片信息的函数
 void subPage::subDelCard(card *oneCard)
 {
-    // 发出删除记录的信号
+    // 发出删除记录的信号（写库成功后由 dataChanged 通知触发 refreshCards 刷新）
     emit deleteRecord(oneCard);
-    // 显示卡片记录
-    showCard();
-    // 重绘页面
-    repaint();
 }
 
 // 绘制事件处理函数，用于绘制背景图片

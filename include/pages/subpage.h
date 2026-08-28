@@ -7,7 +7,6 @@
 QT_BEGIN_NAMESPACE
 // 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
 class QVBoxLayout;
-class QSqlQuery;
 class QDate;
 QT_END_NAMESPACE
 
@@ -15,7 +14,7 @@ QT_END_NAMESPACE
 class card;
 class CustomCalendarWidget;
 class mybutton;
-class sqlDBM;
+class RecordService;
 
 namespace Ui {
 class subPage;
@@ -33,8 +32,8 @@ public:
     ~subPage();
 
 public:
-    // 注入数据管理对象（页面通过它直接获取记录，不再依赖父窗口的信号回填）
-    void setDataBase(sqlDBM *dbm);
+    // 注入记录业务服务：页面通过它查询记录、订阅 dataChanged 信号（不再依赖 sqlDBM）
+    void setRecordService(RecordService *service);
     // 显示卡片记录的函数
     void showCard();
     // 选中的当前日期
@@ -54,8 +53,8 @@ private:
     // 卡片部件
     card* subCard;
 
-    // 注入的数据管理对象指针（未注入时 showCard 展示空记录）
-    sqlDBM* m_dbm = nullptr;
+    // 注入的记录业务服务指针（未注入时 showCard 展示空记录）
+    RecordService* m_recordService = nullptr;
 
     // 滚动布局
     QVBoxLayout* subScrollVbox;
@@ -83,6 +82,8 @@ private slots:
     void subUpdateCard(card* oneCard);
     // 删除卡片信息的槽函数
     void subDelCard(card* oneCard);
+    // 数据变更通知的响应槽：刷新当前日期的卡片列表（由 RecordService::dataChanged 驱动）
+    void refreshCards();
 
 private:
     // UI对象指针

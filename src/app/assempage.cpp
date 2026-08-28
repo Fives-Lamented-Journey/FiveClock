@@ -13,6 +13,7 @@
 #include <QApplication>
 #include <QPushButton>
 #include <QMouseEvent>
+#include <QDate>
 
 // assemPage 类的构造函数，用于初始化页面和相关组件
 assemPage::assemPage(QWidget *parent)
@@ -20,23 +21,27 @@ assemPage::assemPage(QWidget *parent)
     , ui(new Ui::assemPage)
 {
     ui->setupUi(this);
+    // dbm 为成员变量，进入构造函数体时已完全构造，此时才可注入给服务层
+    // 创建记录业务服务层，注入 dbm 指针（UI → RecordService → sqlDBM）
+    m_recordService = std::make_unique<RecordService>(&DBM);
     // 创建一个 petwindow 实例，用于显示桌宠
     pet = new petwindow(this);
     qDebug() << "Entering assemPage constructor";
     // 创建主页面实例
     aHomePage = new Widget(this);
+    // 主页面注入记录业务服务（计时逻辑委托给服务层）
+    aHomePage->setRecordService(m_recordService.get());
     // 创建子页面实例
     aSubPage = new subPage(this);
-    // 子页面注入数据管理对象，后续直接获取记录
-    // （注意：subPage 构造期会执行一次 showCard，此时数据尚未注入，保持原有的空记录展示行为）
-    aSubPage->setDataBase(&DBM);
-    // 日历注入数据管理对象，批量刷新日期按钮样式（替代原先逐按钮发信号查询）
-    aSubPage->calendar->setDataBase(&DBM);
     qDebug() << "Entering achartpage constructor";
     // 创建图表页面实例
     aChartPage = new chartPage(this);
-    // 图表页面注入数据管理对象，供构造完成后的首次 drawChart 取数
-    aChartPage->setDataBase(&DBM);
+    // 页面创建完成后统一注入记录业务服务：
+    // 各视图通过服务层查询记录并订阅 dataChanged 信号，不再感知 dbm
+    // （注意：subPage 构造期会执行一次 showCard，此时服务尚未注入，保持原有的空记录展示行为）
+    aSubPage->setRecordService(m_recordService.get());
+    aSubPage->calendar->setRecordService(m_recordService.get());
+    aChartPage->setRecordService(m_recordService.get());
     qDebug() << "Exiting achartpage constructor";
     // 创建系统托盘图标实例
     trayIcon = new QSystemTrayIcon(this);
@@ -64,8 +69,8 @@ assemPage::assemPage(QWidget *parent)
     // 连接主页面的图表页面按钮点击信号到页面切换槽函数
     connect(aHomePage->chartButton, &QPushButton::clicked, this, &assemPage::pageChangeToChart);
 
-    // 连接主页面的结束按钮点击信号到添加记录槽函数
-    bool res = connect(aHomePage->endbutton, &QPushButton::clicked, this, &assemPage::assAddRecord);
+    // 连接 RecordService 的计时结束信号到添加记录槽函数（携带快照数据）
+    bool res = connect(m_recordService.get(), &RecordService::sig_timerEnded, this, &assemPage::assAddRecord);
     qDebug() << "槽函数是否连接" << res;
     // 连接主页面的开始工作信号到提示工作中槽函数
     connect(aHomePage, &Widget::workingNow, this, &assemPage::tipWorkingNow);
@@ -111,8 +116,8 @@ assemPage::assemPage(QWidget *parent)
     connect(pet, &petwindow::emitCounter, aHomePage, &Widget::onCounterButtonClicked);
     // 连接桌宠的结束信号到主页面的结束按钮点击槽函数
     connect(pet, &petwindow::emitEnd, aHomePage, &Widget::onEndButtonClicked);
-    // 连接桌宠的结束信号到添加记录槽函数
-    connect(pet, &petwindow::emitEnd, this, &assemPage::assAddRecord);
+    // 连接桌宠的结束信号到 RecordService::timerEnd（统一经过计时链路，再触发 sig_timerEnded → assAddRecord）
+    connect(pet, &petwindow::emitEnd, m_recordService.get(), &RecordService::timerEnd);
 
     qDebug() << "Exiting achart draw";
     // 绘制图表
@@ -212,19 +217,17 @@ void assemPage::exitWindow()
     window()->close();
 }
 
-// 添加记录
-void assemPage::assAddRecord()
+// 添加记录（计时结束落库：由 RecordService::sig_timerEnded 携带快照数据触发）
+void assemPage::assAddRecord(const TimerEndSnapshot &snap)
 {
-    if (aHomePage->isWorking == false)
-    {
-        return;
-    }
-    // 标记工作结束
-    aHomePage->isWorking = false;
+    // 从快照中提取计时数据（替代原 aHomePage 成员变量读取）
+    const QString &startTime = snap.startTime;
+    const QString &endTime = snap.endTime;
+    const int consumTime = snap.consumMin;
+    const int counter = snap.counter;
 
     // 创建信息对话框实例（栈对象：exec 为模态阻塞，返回后自动析构，无需手动 delete）
-    infoDialog assInfoDialog(this, aHomePage->startTime, aHomePage->endTime,
-                             aHomePage->consumTime, aHomePage->counter);
+    infoDialog assInfoDialog(this, startTime, endTime, consumTime, counter);
 
     if (assInfoDialog.exec() == QDialog::Accepted)
     {
@@ -235,21 +238,21 @@ void assemPage::assAddRecord()
         assInfoDialog.detail = assInfoDialog.getdetailText();
         // 获取分类信息
         assInfoDialog.classfy = assInfoDialog.getclassBox();
-        // connect(assInfoDialog,&infoDialog::infoAddRecord);
-        // assInfoDialog->addRecord();
         qDebug("exec02");
-        // 插入记录（表不存在时自动创建）
-        DBM.insertDataEnsureTable(assInfoDialog.today,
-                                  assInfoDialog.startTime, assInfoDialog.endTime,
-                                  assInfoDialog.consumTime, assInfoDialog.counter,
-                                  assInfoDialog.detail, assInfoDialog.classfy);
-        // 更新日历
-        aSubPage->calendar->updateCalendar();
-        // 绘制饼图
-        aChartPage->drawPieChart();
+        // 计时结束落库：改走业务服务层（UI → RecordService → sqlDBM），SQL 逻辑复用底层实现
+        // 写入成功后由 RecordService::dataChanged 通知日历、图表、卡片列表自动刷新
+        bool ok = m_recordService->saveTimeRecord(assInfoDialog.today,
+                                                  assInfoDialog.startTime, assInfoDialog.endTime,
+                                                  assInfoDialog.consumTime, assInfoDialog.counter,
+                                                  assInfoDialog.detail, assInfoDialog.classfy);
+        if (ok) {
+            // 落库成功：确认计时记录已保存，清 TimerModel 的 isWorking 状态
+            m_recordService->timerMarkSaved();
+        }
     }
     else
     {
+        // 用户取消保存：计时记录未落库，isWorking 保持 true，允许重试
         qDebug("exec02");
     }
 }
@@ -257,24 +260,26 @@ void assemPage::assAddRecord()
 // 更新记录
 void assemPage::assUpdateRecord(card *oneCard)
 {
-    // 调用数据库管理类的更新记录方法
-    DBM.updateRecord(oneCard->cardCreateDate, oneCard->cardEverntId,
-                     oneCard->cardBegTime, oneCard->cardEndTime,
-                     oneCard->cardConsuTime, oneCard->cardcounter,
-                     oneCard->cardDetail, oneCard->cardClass);
+    // 更新记录改走业务服务层：从 card 字段构造 TimeRecord，服务层转发至 sqlDBM::updateRecord
+    TimeRecord rec;
+    rec.eventId = oneCard->cardEverntId;
+    rec.begTime = oneCard->cardBegTime;
+    rec.endTime = oneCard->cardEndTime;
+    rec.consumTime = oneCard->cardConsuTime;
+    rec.counter = oneCard->cardcounter;
+    rec.detail = oneCard->cardDetail;
+    rec.eventClass = oneCard->cardClass;
+    // 成功后由 RecordService::dataChanged 通知各视图刷新
+    m_recordService->updateRecord(QDate::fromString(oneCard->cardCreateDate, "yyyy-MM-dd"), rec);
 }
 
 // 删除记录
 void assemPage::assDeleteRecord(card *oneCard)
 {
-    // 调用数据库管理类的删除记录方法
-    DBM.deleteRecord(oneCard->cardCreateDate, oneCard->cardEverntId);
-    if (DBM.getRowCount(oneCard->cardCreateDate) == 0)
-    {
-        // 如果表中记录数为 0，则更新日历和绘制饼图
-        aSubPage->calendar->updateCalendar();
-        aChartPage->drawPieChart();
-    }
+    // 删除记录改走业务服务层（eventID 按日分表自增，需日期+ID 共同定位）
+    // （删除成功后由 RecordService::dataChanged 通知各视图自动刷新，无需再判断表是否清空）
+    m_recordService->deleteRecord(QDate::fromString(oneCard->cardCreateDate, "yyyy-MM-dd"),
+                                  oneCard->cardEverntId);
 }
 
 // 添加空记录
@@ -305,18 +310,16 @@ void assemPage::assAddEmptyRecord()
         qDebug() << assInfoDialog.today;
         qDebug() << assInfoDialog.detail;
         qDebug() << assInfoDialog.classfy;
-        // connect(assInfoDialog,&infoDialog::infoAddRecord,);
-        // assInfoDialog->addRecord();
-        // 插入记录（表不存在时自动创建）
-        DBM.insertDataEnsureTable(assInfoDialog.today,
-                                  assInfoDialog.startTime, assInfoDialog.endTime,
-                                  assInfoDialog.consumTime, assInfoDialog.counter,
-                                  assInfoDialog.detail, assInfoDialog.classfy);
-        // 显示卡片
-        aSubPage->showCard();
-        // 更新日历
-        aSubPage->calendar->updateCalendar();
-        aChartPage->drawChart();
+        // 插入记录改走业务服务层：从 infoDialog 字段构造 TimeRecord
+        // 写入成功后由 RecordService::dataChanged 通知卡片列表、日历、图表自动刷新
+        TimeRecord rec;
+        rec.begTime = assInfoDialog.startTime;
+        rec.endTime = assInfoDialog.endTime;
+        rec.consumTime = assInfoDialog.consumTime;
+        rec.counter = assInfoDialog.counter;
+        rec.detail = assInfoDialog.detail;
+        rec.eventClass = assInfoDialog.classfy;
+        m_recordService->addEmptyRecord(QDate::fromString(assInfoDialog.today, "yyyy-MM-dd"), rec);
     }
     else
     {

@@ -1,9 +1,8 @@
 #include "pages/chartpage.h"
 #include "ui_chartpage.h"
 #include "widgets/mybutton.h"
-#include "db/sqldbm.h"
+#include "service/record_service.h"
 #include <QtCharts>
-#include <QSqlQuery>
 #include <QVBoxLayout>
 #include <QPainter>
 
@@ -75,10 +74,19 @@ chartPage::~chartPage()
     delete ui;
 }
 
-// 注入数据管理对象
-void chartPage::setDataBase(sqlDBM *dbm)
+// 注入记录业务服务：页面通过它获取统计数据、订阅 dataChanged 信号，不再直连 dbm
+void chartPage::setRecordService(RecordService *service)
 {
-    m_dbm = dbm;
+    // 保存指针供 generateData / generateWeekData 取数使用（构造期未注入时取数为空）
+    m_recordService = service;
+    // UniqueConnection 防御重复注入导致的重复刷新；context 为 this，析构时自动断开
+    connect(service, &RecordService::dataChanged, this, &chartPage::refreshCharts, Qt::UniqueConnection);
+}
+
+// 数据变更通知的响应槽：重新绘制全部图表
+void chartPage::refreshCharts()
+{
+    drawChart();
 }
 
 // 绘制所有图表的函数，调用绘制柱状图和饼状图的函数
@@ -275,16 +283,10 @@ void chartPage::generateData()
     // 清空数据
     data.clear();
 
-    // 直接通过注入的数据管理对象获取指定日期的数据
-    // 未注入时（构造期 setDate 会同步触发本槽），query 保持为空 —— 与旧版信号未被连接时的行为一致
-    QSqlQuery query;
-    if (m_dbm) {
-        query = m_dbm->consuTimeOfDay(selectedDay.toString("yyyy-MM-dd"));
-    }
-
-    // 遍历查询结果，将数据插入到 data 中
-    while (query.next()) {
-        data.insert(query.value(0).toString(), query.value(1).toInt());
+    // 通过业务服务层获取指定日期的分类时长数据（分钟）
+    // 未注入时（构造期 setDate 会同步触发本槽），data 保持为空 —— 与旧版信号未被连接时的行为一致
+    if (m_recordService) {
+        data = m_recordService->dayClassConsume(selectedDay);
     }
     qDebug() << "Exiting generateData";
 }
@@ -297,22 +299,10 @@ void chartPage::generateWeekData(int index)
     // 获取选中的周
     getSelectedWeek(index);
 
-    // 直接通过注入的数据管理对象获取选中周的数据
-    // 未注入时（构造期 UI 初始化链路可能触发本槽），query 保持为空 —— 与旧版信号未被连接时的行为一致
-    QSqlQuery query;
-    if (m_dbm) {
-        query = m_dbm->returnSumCounterTime(selectedWeek);
-    }
-    // 如果查询结果为空，输出提示信息并返回
-    if (!query.next()) {
-        qDebug() << "generateWeekData的query的记录为空";
-        return;
-    }
-    // 将查询结果指针移动到第一条记录之前
-    query.seek(-1);
-    // 遍历查询结果，将数据插入到 weekData 中
-    while (query.next()) {
-        weekData.insert(query.value(0).toString(), query.value(1).toInt());
+    // 通过业务服务层获取选中周的分神数据
+    // 未注入时（构造期 UI 初始化链路可能触发本槽），weekData 保持为空 —— 与旧版信号未被连接时的行为一致
+    if (m_recordService) {
+        weekData = m_recordService->weekCounterStats(selectedWeek);
     }
 }
 

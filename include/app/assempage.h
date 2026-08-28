@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include "db/sqldbm.h"        // DBM 为值成员，需要完整类型
+#include "service/record_service.h"  // m_recordService 为 unique_ptr 成员，需要完整类型
+#include <memory>
 #include <QSystemTrayIcon> // 槽签名使用 QSystemTrayIcon::ActivationReason 嵌套枚举
 
 QT_BEGIN_NAMESPACE
@@ -50,6 +52,10 @@ private:
     // 数据库管理类实例
     sqlDBM DBM;
 
+    // 记录业务服务层（依赖方向：UI → RecordService → sqlDBM）
+    // 持有 DBM 的原始指针注入，不负责 DBM 的生命周期
+    std::unique_ptr<RecordService> m_recordService;
+
     // 标记窗口是否正在移动
     bool assMoving;
     // 记录鼠标按下时的相对位置
@@ -76,8 +82,8 @@ private slots:
     // 退出窗口
     void exitWindow();
 
-    // 添加记录
-    void assAddRecord();
+    // 添加记录（计时结束落库：由 RecordService::sig_timerEnded 携带快照数据触发）
+    void assAddRecord(const TimerEndSnapshot &snap);
     // 更新记录
     void assUpdateRecord(card* oneCard);
     // 删除记录
@@ -99,8 +105,9 @@ private:
     // UI 界面指针
     Ui::assemPage *ui;
 
-    // QWidget 接口，处理鼠标按下事件
+    
 protected:
+    // QWidget 接口，处理鼠标按下事件
     void mousePressEvent(QMouseEvent *event) override;
     // QWidget 接口，处理鼠标释放事件
     void mouseReleaseEvent(QMouseEvent *event) override;

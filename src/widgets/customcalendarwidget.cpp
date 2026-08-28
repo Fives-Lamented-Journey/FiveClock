@@ -1,5 +1,5 @@
 #include "widgets/customcalendarwidget.h"
-#include "db/sqldbm.h"
+#include "service/record_service.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QPushButton>
@@ -8,10 +8,19 @@
 #include <QSet>
 #include <qtimer.h>
 
-// 注入数据管理对象，用于批量查询哪些日期有记录
-void CustomCalendarWidget::setDataBase(sqlDBM *dbm)
+// 注入记录业务服务：部件通过它批量查询有记录日期、订阅 dataChanged 信号，不再直连 dbm
+void CustomCalendarWidget::setRecordService(RecordService *service)
 {
-    m_dbm = dbm;
+    // 保存指针供 refreshDayStyles 查询使用（构造期未注入时全部按钮按无记录样式展示）
+    m_recordService = service;
+    // UniqueConnection 防御重复注入导致的重复刷新；context 为 this，析构时自动断开
+    connect(service, &RecordService::dataChanged, this, &CustomCalendarWidget::onDataChanged, Qt::UniqueConnection);
+}
+
+// 数据变更通知的响应槽：更新日历显示与日期按钮样式
+void CustomCalendarWidget::onDataChanged()
+{
+    updateCalendar();
 }
 
 // 批量刷新日期按钮样式：一次枚举当月有记录的日期集合后统一设置，
@@ -41,18 +50,10 @@ void CustomCalendarWidget::refreshDayStyles()
                                                          "    background-color:rgba(152 ,245 ,255,200);"
                                                          "}");
 
-    // 收集当月有记录的日期（表名即 yyyy-MM-dd 格式），仅一次枚举全部表名
+    // 收集当月有记录的日期（服务层沿用"表存在且有记录"的判断条件，一次批量返回）
     QSet<QString> markedDays;
-    if (m_dbm) {
-        // 当月表名前缀，如 "2026-08-"
-        const QString prefix = QDate(currentDate.year(), currentDate.month(), 1).toString("yyyy-MM-");
-        const QStringList tables = m_dbm->allTableNames();
-        for (const QString &tableName : tables) {
-            // 保持原有"表存在且有记录"的判断条件
-            if (tableName.startsWith(prefix) && m_dbm->getRowCount(tableName) > 0) {
-                markedDays.insert(tableName);
-            }
-        }
+    if (m_recordService) {
+        markedDays = m_recordService->markedDaysOfMonth(currentDate.year(), currentDate.month());
     }
 
     // 遍历网格中的日期按钮，按是否有记录设置样式
