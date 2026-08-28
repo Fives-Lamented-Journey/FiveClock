@@ -2,9 +2,7 @@
 #define CHARTPAGE_H
 
 #include <QWidget>
-#include <QMap>        // data/weekData 为值成员，需要完整类型
 #include <QDate>       // selectedDay 为值成员，需要完整类型
-#include <QStringList> // selectedWeek 为值成员，需要完整类型
 
 QT_BEGIN_NAMESPACE
 // QChart 在头文件中仅以指针形式使用；完整的 QtCharts 定义在 chartpage.cpp 中包含
@@ -21,6 +19,8 @@ class chartPage;
 }
 
 // chartPage 类，继承自 QWidget
+// 纯视图层：只负责图表绘制与交互响应，数据一律来自 RecordService
+// （周索引换算、分类时长汇总等业务规则已下沉至 RecordService 的 static 工具接口）
 class chartPage : public QWidget
 {
     Q_OBJECT
@@ -32,31 +32,9 @@ public:
     ~chartPage();
     // 注入记录业务服务：页面通过它获取统计数据、订阅 dataChanged 信号（不再依赖 sqlDBM）
     void setRecordService(RecordService *service);
-    // 消费时间统计的图表对象指针
-    QChart *consumChart;
-    // 分神次数统计的图表对象指针
-    QChart *counterChart;
 
     // 绘制所有图表的函数
     void drawChart();
-    // 清除指定图表内容的函数
-    void clearChart(QChart* chart);
-    // 绘制饼状图的函数
-    void drawPieChart();
-    // 绘制柱状图的函数，默认索引为 0
-    void drawColChart(int index = 0);
-
-    // 生成绘制饼状图所需数据的函数
-    void generateData();
-    // 生成绘制柱状图所需周数据的函数，默认索引为 0
-    void generateWeekData(int index = 0);
-    // 初始化周选择下拉框的函数
-    void iniWeekCombox();
-
-    // 获取选中周的日期列表的函数，默认索引为 0
-    void getSelectedWeek(int index = 0);
-    // 计算总消费时间的函数
-    int getSumConsuTime();
 
     // 主页按钮对象指针
     mybutton *homeButton = nullptr;
@@ -74,19 +52,26 @@ private slots:
     void refreshCharts();
 
 private:
+    // 初始化周选择下拉框的函数
+    void iniWeekCombox();
+    // 清除指定图表内容的函数
+    void clearChart(QChart* chart);
+    // 绘制饼状图的函数
+    void drawPieChart();
+    // 绘制柱状图的函数，默认索引为 0
+    void drawColChart(int index = 0);
+
     // 注入的记录业务服务指针（未注入时取数为空，与旧版信号未被连接时的行为一致）
     RecordService* m_recordService = nullptr;
 
     // UI 对象指针
     Ui::chartPage *ui;
 
-    // 存储绘制饼状图所需的数据
-    QMap<QString, int> data;
-    // 存储绘制柱状图所需的周数据
-    QMap<QString, int> weekData;
+    // 消费时间统计的图表对象指针
+    QChart *consumChart = nullptr;
+    // 分神次数统计的图表对象指针
+    QChart *counterChart = nullptr;
 
-    // 选中周的日期列表
-    QStringList selectedWeek;
     // 选中的日期
     QDate selectedDay;
 

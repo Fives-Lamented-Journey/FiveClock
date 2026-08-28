@@ -11,6 +11,7 @@ QT_END_NAMESPACE
 // 项目内类型仅以指针形式使用
 class mybutton;
 class RecordService;
+class TimerService;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -18,8 +19,8 @@ class Widget;
 }
 QT_END_NAMESPACE
 
-// Widget 类继承自 QWidget，纯视图层：不再持有计时业务状态
-// 计时逻辑全部委托给 RecordService，本类仅负责 UI 显示与用户操作转发
+// Widget 类继承自 QWidget，纯视图层
+// 计时逻辑委托给 TimerService，记录操作委托给 RecordService
 class Widget : public QWidget
 {
     Q_OBJECT
@@ -27,8 +28,10 @@ public:
     explicit Widget(QWidget *parent = nullptr);
     ~Widget();
 
-    // 注入记录业务服务（页面通过它操作计时、订阅信号刷新 UI）
+    // 注入记录业务服务（查询/记录操作通过它）
     void setRecordService(RecordService *service);
+    // 注入计时业务服务（计时控制通过它）
+    void setTimerService(TimerService *service);
 
     // 显示当前时间的函数
     void showNowTime();
@@ -64,11 +67,11 @@ public slots:
     void do_now_timer_timeout();
 
 private slots:
-    // RecordService 信号处理：更新 LCD / 按钮状态 / 转发提醒信号
-    void onServiceTimeUpdated(qint64 ms);
-    void onServiceTimerEnded();
-    void onServiceAlreadyWorking();
-    void onServiceNotWorking();
+    // TimerService 信号处理：更新 LCD / 按钮状态 / 转发提醒信号
+    void onTimerTimeUpdated(qint64 ms);
+    void onTimerEnded();
+    void onTimerAlreadyWorking();
+    void onTimerNotWorking();
 
 private:
     // 构建时根据当前计时状态设置按钮启用/禁用
@@ -77,7 +80,8 @@ private:
     QTimer *now_timer = nullptr;        // 刷新当前时间 LCD（纯 UI）
     QDateTime m_time;
 
-    RecordService *m_recordService = nullptr;
+    TimerService *m_timerService = nullptr;   // 计时业务服务（计时控制）
+    RecordService *m_recordService = nullptr;  // 记录业务服务（查询/记录操作）
 
     Ui::Widget *ui;
 

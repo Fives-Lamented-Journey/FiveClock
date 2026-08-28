@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QDateTime>   // selectedToday 的 NSDMI 中调用了 QDateTime 静态方法
+#include "dto/time_record.h"  // TimeRecord 类型成员转换需要
 
 QT_BEGIN_NAMESPACE
 // 以下 Qt 类型在头文件中仅以指针/引用形式使用，使用前向声明降低编译依赖
@@ -15,12 +16,14 @@ class card;
 class CustomCalendarWidget;
 class mybutton;
 class RecordService;
+class ConfigService;
 
 namespace Ui {
 class subPage;
 }
 
 // 子页面类，继承自QWidget
+// 承载卡片 CRUD 交互：打开 InfoDialog → DTO 组装 → 调用 RecordService
 class subPage : public QWidget
 {
     Q_OBJECT
@@ -32,8 +35,10 @@ public:
     ~subPage();
 
 public:
-    // 注入记录业务服务：页面通过它查询记录、订阅 dataChanged 信号（不再依赖 sqlDBM）
+    // 注入记录业务服务：页面通过它查询/增删改记录、订阅 dataChanged 信号
     void setRecordService(RecordService *service);
+    // 注入配置服务：页面通过它获取常量文本
+    void setConfigService(ConfigService *service);
     // 显示卡片记录的函数
     void showCard();
     // 选中的当前日期
@@ -55,6 +60,8 @@ private:
 
     // 注入的记录业务服务指针（未注入时 showCard 展示空记录）
     RecordService* m_recordService = nullptr;
+    // 注入的配置服务指针
+    ConfigService* m_configService = nullptr;
 
     // 滚动布局
     QVBoxLayout* subScrollVbox;
@@ -68,20 +75,18 @@ signals:
     void pageChangeToSub();
     // 页面切换到主页的信号
     void pageChangeToHome();
-    // 更新记录的信号
-    void updateRecord(card* oneCard);
-    // 删除记录的信号
-    void deleteRecord(card* oneCard);
     // 窗口大小改变的信号
     void resized();
 
 private slots:
     // 当日期选择改变时更新卡片列表的槽函数
     void subUpdateCardList(const QDate &date);
-    // 更新卡片信息的槽函数
+    // 更新卡片信息：唤起 InfoDialog → 组装 TimeRecord → 调用 RecordService 更新
     void subUpdateCard(card* oneCard);
-    // 删除卡片信息的槽函数
+    // 删除卡片信息：直接调用 RecordService 删除
     void subDelCard(card* oneCard);
+    // 添加空记录：唤起 InfoDialog → 组装 TimeRecord → 调用 RecordService 新增
+    void onAddRecordClicked();
     // 数据变更通知的响应槽：刷新当前日期的卡片列表（由 RecordService::dataChanged 驱动）
     void refreshCards();
 

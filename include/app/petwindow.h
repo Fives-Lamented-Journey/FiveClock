@@ -10,6 +10,9 @@ class QMenu;
 class QLCDNumber;
 QT_END_NAMESPACE
 
+// 项目内类型仅以指针形式使用
+class ConfigService;
+
 // 命名空间，包含用户界面类
 namespace Ui {
 class petwindow;
@@ -28,6 +31,8 @@ public:
     ~petwindow();
     // 创建右键菜单的函数
     void createContextMenu();
+    // 注入配置服务
+    void setConfigService(ConfigService *service);
 
 public slots:
     // 更新 QLCDNumber 显示时间的槽函数
@@ -38,15 +43,6 @@ private slots:
     void hidePet();
     // 退出应用程序的槽函数
     void quitapp();
-
-    // 触发开始计时信号的槽函数
-    void petStart();
-    // 触发暂停/继续计时信号的槽函数
-    void petPause();
-    // 触发分神次数增加信号的槽函数
-    void petCounter();
-    // 触发结束计时信号的槽函数
-    void petEnd();
 
 signals:
     // 开始计时信号
@@ -75,6 +71,9 @@ private:
     bool petMoving;
     // 宠物的最后位置
     QPoint petLastPose;
+
+    // 注入的配置服务指针
+    ConfigService* m_configService = nullptr;
 
 protected:
     // 鼠标移动事件处理函数

@@ -2,7 +2,6 @@
 #define INFODIALOG_H
 
 #include <QDialog>
-#include <QDateTime>   // todayTimer 为值成员，需要完整类型
 
 // 项目内类型仅以指针形式使用
 class mybutton;
@@ -13,70 +12,41 @@ class infoDialog;
 }
 
 // infoDialog 类继承自 QDialog，用于显示信息对话框
+// 职责：纯 UI 收集器 — 仅负责展示和收集用户输入
+// 约束：不持有业务数据成员，所有数据通过 getter 从 UI 控件实时读取
 class infoDialog : public QDialog
 {
     Q_OBJECT
 
-    // 定义信号，当需要添加记录时发出该信号
 signals:
     void infoAddRecord(infoDialog * infoDialog);
 
-    // 构造函数和析构函数
 public:
-    // 显式构造函数，接收父窗口指针、开始时间、结束时间、消耗时间、计数器值、详细信息和是否可编辑标志
+    // 构造函数：传入初始值用于 UI 显示（计时结束后回填），infoEditable 控制是否可编辑
     explicit infoDialog(QWidget *parent = nullptr,
-                        const QString &startTime="",const QString &endTime="",
-                        const int &consumTime=0,const int &counter=0,
-                        QString detail="",bool infoEditable=false
-                        );
-    // 析构函数
+                        const QString &startTime="", const QString &endTime="",
+                        const int &consumTime=0, const int &counter=0,
+                        QString detail="", bool infoEditable=false);
     ~infoDialog();
 
-    // 获取当前日期的函数
-    QString getTodayTime();
-    // 获取详细信息的函数
-    QString getDetail();
-    // 获取开始时间的函数
-    QString getstartLine();
-    // 获取结束时间的函数
-    QString getendLine();
-    // 获取消耗时间的函数
-    int getconsumBox();
-    // 获取计数器值的函数
-    int getcounterBox();
-    // 获取分类信息的函数
-    QString getclassBox();
-    // 获取详细文本信息的函数
-    QString getdetailText();
+    // ---------- Getter 接口（从 UI 控件实时读取） ----------
+    QString getTodayTime() const;      // 当前日期（yyyy-MM-dd）
+    QString getdetailText() const;     // 详细描述文本
+    QString getstartLine() const;      // 开始时间
+    QString getendLine() const;       // 结束时间
+    int getconsumBox() const;          // 消耗时长（分钟）
+    int getcounterBox() const;         // 分神次数
+    QString getclassBox() const;      // 事件分类显示名
 
-    // 成员变量，用于存储开始时间、结束时间、消耗时间、计数器值、详细信息、分类信息和当前日期
-    QString startTime;
-    QString endTime;
-    int consumTime;
-    int counter;
-    QString detail;
-    QString classfy;
-
-    QString today;
-    QDateTime  todayTimer;
-
-    // 私有成员变量
 private:
-    // 指向自动生成的 UI 类的指针
     Ui::infoDialog *ui;
+    bool m_infoEditable = false;
 
-    // 标志位，指示对话框是否可编辑
-    bool infoEditable;
-
-    // 自定义按钮，用于确认操作
-    mybutton* okButton = nullptr;
-    // 自定义按钮，用于取消操作
-    mybutton* noButton = nullptr;
+    mybutton* m_okButton = nullptr;
+    mybutton* m_noButton = nullptr;
 
 protected:
-    // 重写绘制事件处理函数，用于绘制对话框背景
     void paintEvent(QPaintEvent *event) override;
-    // 重写大小改变事件处理函数，用于更新对话框
     void resizeEvent(QResizeEvent *event) override;
 };
 

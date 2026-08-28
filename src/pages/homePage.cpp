@@ -2,13 +2,14 @@
 #include "ui_homePage.h"
 #include "widgets/mybutton.h"
 #include "service/record_service.h"
+#include "service/timer_service.h"
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGraphicsOpacityEffect>
 #include <QPainter>
 
-// 构造函数：初始化 UI 按钮与 now_timer（纯显示用，计时逻辑委托给 RecordService）
+// 构造函数：初始化 UI 按钮与 now_timer（纯显示用）
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget)
@@ -102,7 +103,7 @@ Widget::Widget(QWidget *parent)
     // 信号连接：now_timer → 当前时间 LCD 刷新
     connect(now_timer, &QTimer::timeout, this, &Widget::do_now_timer_timeout);
 
-    // 信号连接：按钮点击 → 转发到 RecordService
+    // 信号连接：按钮点击 → 转发到 TimerService
     connect(startbutton, &QPushButton::clicked, this, &Widget::onStartButtonClicked);
     connect(endbutton, &QPushButton::clicked, this, &Widget::onEndButtonClicked);
     connect(pausebutton, &QPushButton::clicked, this, &Widget::onPauseButtonClicked);
@@ -114,24 +115,31 @@ Widget::~Widget()
     delete ui;
 }
 
-// 注入 RecordService：连接其信号以刷新 LCD / 按钮状态 / 转发提醒
+// 注入 RecordService（记录查询/操作通过它）
 void Widget::setRecordService(RecordService *service)
 {
     m_recordService = service;
+    // RecordService 无计时信号，此处无需连接
+}
+
+// 注入 TimerService（计时控制通过它）
+void Widget::setTimerService(TimerService *service)
+{
+    m_timerService = service;
     // 计时 LCD 刷新（每 10ms）
-    connect(service, &RecordService::sig_timeUpdated,
-            this, &Widget::onServiceTimeUpdated);
-    // 计时结束：重置 LCD、更新按钮状态
-    connect(service, &RecordService::sig_timerEnded,
-            this, &Widget::onServiceTimerEnded);
+    connect(service, &TimerService::sig_timeUpdated,
+            this, &Widget::onTimerTimeUpdated);
+    // 计时结束：重置 LCD
+    connect(service, &TimerService::sig_timerEnded,
+            this, &Widget::onTimerEnded);
     // 计时状态变更（start/pause/end）：刷新按钮启用/禁用
-    connect(service, &RecordService::sig_stateChanged,
+    connect(service, &TimerService::sig_stateChanged,
             this, &Widget::applyButtonState);
     // 提醒信号：转发给 assemPage（托盘提示）
-    connect(service, &RecordService::sig_alreadyWorking,
-            this, &Widget::onServiceAlreadyWorking);
-    connect(service, &RecordService::sig_notWorking,
-            this, &Widget::onServiceNotWorking);
+    connect(service, &TimerService::sig_alreadyWorking,
+            this, &Widget::onTimerAlreadyWorking);
+    connect(service, &TimerService::sig_notWorking,
+            this, &Widget::onTimerNotWorking);
 
     // 根据 service 当前状态初始化按钮
     applyButtonState();
@@ -167,19 +175,18 @@ void Widget::setButtonOpacity()
     counterButton->setStyleSheet(counterButton->isEnabled() ? enabledStyle : disabledStyle);
 }
 
-// 根据当前计时状态设置按钮启用/禁用
-// 迁移自原 onStart/onPause/onEnd 中的按钮状态逻辑
+// 根据当前计时状态设置按钮启用/禁用（从 TimerService 查询状态）
 void Widget::applyButtonState()
 {
-    if (!m_recordService) {
+    if (!m_timerService) {
         // 未注入 service 时的安全默认
         startbutton->setEnabled(true);
         pausebutton->setEnabled(false);
         endbutton->setEnabled(false);
         counterButton->setEnabled(false);
     } else {
-        const bool working = m_recordService->isTimerWorking();
-        const bool running = m_recordService->isTimerRunning();
+        const bool working = m_timerService->isTimerWorking();
+        const bool running = m_timerService->isTimerRunning();
 
         // 未工作：仅 start 可用
         startbutton->setEnabled(!working);
@@ -191,39 +198,39 @@ void Widget::applyButtonState()
     setButtonOpacity();
 }
 
-// ---------- 按钮点击槽（转发到 RecordService） ----------
+// ---------- 按钮点击槽（转发到 TimerService） ----------
 
 void Widget::onStartButtonClicked()
 {
-    if (m_recordService) {
-        m_recordService->timerStart();
+    if (m_timerService) {
+        m_timerService->timerStart();
     }
 }
 
 void Widget::onEndButtonClicked()
 {
-    if (m_recordService) {
-        m_recordService->timerEnd();
+    if (m_timerService) {
+        m_timerService->timerEnd();
     }
 }
 
 void Widget::onPauseButtonClicked()
 {
-    if (m_recordService) {
-        m_recordService->timerPause();
+    if (m_timerService) {
+        m_timerService->timerPause();
     }
 }
 
 void Widget::onCounterButtonClicked()
 {
-    if (m_recordService) {
-        m_recordService->timerIncrementCounter();
+    if (m_timerService) {
+        m_timerService->timerIncrementCounter();
     }
 }
 
-// ---------- RecordService 信号处理 ----------
+// ---------- TimerService 信号处理 ----------
 
-void Widget::onServiceTimeUpdated(qint64 ms)
+void Widget::onTimerTimeUpdated(qint64 ms)
 {
     // 将毫秒数格式化为 hh:mm:ss 并更新 LCD
     int h = int(ms / (1000 * 60 * 60));
@@ -237,23 +244,21 @@ void Widget::onServiceTimeUpdated(qint64 ms)
     emit lcdChanged(timeStr);
 }
 
-void Widget::onServiceTimerEnded()
+void Widget::onTimerEnded()
 {
     // 计时结束：重置 LCD（按钮状态由 sig_stateChanged 统一驱动）
     ui->startLcd->display("00:00:00");
     emit lcdChanged("00:00:00");
 }
 
-void Widget::onServiceAlreadyWorking()
+void Widget::onTimerAlreadyWorking()
 {
     emit workingNow();
 }
 
-void Widget::onServiceNotWorking()
+void Widget::onTimerNotWorking()
 {
     // pause() / end() 在未工作时均会触发此信号
-    // 原逻辑：pause → pausingNow，end → noWorkingNow
-    // 由于无法区分，这里统一发 noWorkingNow（托盘提示文案略有差异但不影响功能）
     emit noWorkingNow();
 }
 

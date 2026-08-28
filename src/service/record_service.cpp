@@ -1,65 +1,24 @@
 #include "service/record_service.h"
-#include "db/sqldbm.h"
-#include "timer/timermodel.h"
+#include "db/idb_access.h"
 
-RecordService::RecordService(sqlDBM *dbm, QObject *parent)
+#include <QDebug>     // qWarning() 日志输出
+#include <QtGlobal>   // Q_ASSERT 宏
+
+RecordService::RecordService(IDbAccess *dbm, QObject *parent)
     : QObject(parent)
     , m_dbM(dbm)
-    , m_timerModel(new TimerModel(this))
 {
-    // dbm 必须先于本服务完全构造完成（由 assemPage 保证注入顺序）
-    connect(m_dbM, &sqlDBM::dataChanged, this, &RecordService::onDbDataChanged);
+    if (dbm == nullptr) {
+        qWarning() << "RecordService: dbm 为空，服务层无法正常工作";
+        return;
+    }
 
-    // 连接 TimerModel 信号并转发给 UI 层
-    connect(m_timerModel, &TimerModel::sig_timeUpdated,
-            this, &RecordService::onTimerTick);
-    connect(m_timerModel, &TimerModel::sig_alreadyWorking,
-            this, &RecordService::sig_alreadyWorking);
-    connect(m_timerModel, &TimerModel::sig_notWorking,
-            this, &RecordService::sig_notWorking);
-    connect(m_timerModel, &TimerModel::sig_timerEnded,
-            this, &RecordService::onTimerEnded);
+    connect(m_dbM, &IDbAccess::dataChanged, this, &RecordService::onDbDataChanged);
 }
 
 RecordService::~RecordService()
 {
-    // m_timerModel 有 this 作为 parent，Qt 自动释放
-}
-
-// ---------- 计时控制 ----------
-
-void RecordService::timerStart()         { m_timerModel->start(); emit sig_stateChanged(); }
-void RecordService::timerPause()          { m_timerModel->pause(); emit sig_stateChanged(); }
-void RecordService::timerEnd()            { m_timerModel->end(); emit sig_stateChanged(); }
-void RecordService::timerIncrementCounter() { m_timerModel->incrementCounter(); }
-void RecordService::timerMarkSaved()       { m_timerModel->markSaved(); }
-
-qint64 RecordService::getCurrentTimerMs() const { return m_timerModel->elapsedMs(); }
-bool RecordService::isTimerWorking()     const { return m_timerModel->isWorking(); }
-bool RecordService::isTimerRunning()     const { return m_timerModel->isRunning(); }
-int  RecordService::timerConsumMinutes() const { return m_timerModel->consumMinutes(); }
-int  RecordService::timerCounter()       const { return m_timerModel->counter(); }
-QString RecordService::timerStartTime()  const { return m_timerModel->startTimeStr(); }
-QString RecordService::timerEndTime()    const { return m_timerModel->endTimeStr(); }
-QString RecordService::timerFormatElapsed() const { return m_timerModel->formatElapsed(); }
-
-// ---------- TimerModel 信号转发 ----------
-
-void RecordService::onTimerTick(qint64 ms)
-{
-    emit sig_timeUpdated(ms);
-}
-
-void RecordService::onTimerEnded(qint64 elapsedMs, int consumMin, int counter,
-                                  const QString &startTime, const QString &endTime)
-{
-    TimerEndSnapshot snap;
-    snap.elapsedMs = elapsedMs;
-    snap.consumMin = consumMin;
-    snap.counter = counter;
-    snap.startTime = startTime;
-    snap.endTime = endTime;
-    emit sig_timerEnded(snap);
+    // m_dbM 为外部注入，不负责释放
 }
 
 // ---------- 写路径 ----------
@@ -67,52 +26,84 @@ void RecordService::onTimerEnded(qint64 elapsedMs, int consumMin, int counter,
 bool RecordService::saveTimeRecord(const QString &date, const QString &startTime, const QString &endTime,
                                    int consumTime, int counter, const QString &detail, const QString &eventClass)
 {
-    if (m_dbM == nullptr) return false;
+    if (m_dbM == nullptr) {
+        qWarning() << "RecordService::saveTimeRecord: dbm 为空";
+        return false;
+    }
     m_suppressForward = true;
     m_opNotified = false;
     m_dbM->insertDataEnsureTable(date, startTime, endTime, consumTime, counter, detail, eventClass);
     m_suppressForward = false;
-    if (!m_opNotified) return false;
+    if (!m_opNotified) {
+        qWarning() << "RecordService::saveTimeRecord: 插入失败";
+        return false;
+    }
     emit dataChanged();
     return true;
 }
 
+bool RecordService::saveFromSnapshot(const TimerEndSnapshot &snap, const QString &date,
+                                      const QString &detail, const QString &eventClass)
+{
+    // 从快照提取计时数据，调用通用保存接口
+    return saveTimeRecord(date, snap.startTime, snap.endTime,
+                          snap.consumMin, snap.counter, detail, eventClass);
+}
+
 bool RecordService::deleteRecord(const QDate &date, int eventId)
 {
-    if (m_dbM == nullptr) return false;
+    if (m_dbM == nullptr) {
+        qWarning() << "RecordService::deleteRecord: dbm 为空";
+        return false;
+    }
     m_suppressForward = true;
     m_opNotified = false;
     m_dbM->deleteRecord(date.toString("yyyy-MM-dd"), eventId);
     m_suppressForward = false;
-    if (!m_opNotified) return false;
+    if (!m_opNotified) {
+        qWarning() << "RecordService::deleteRecord: 删除失败";
+        return false;
+    }
     emit dataChanged();
     return true;
 }
 
 bool RecordService::updateRecord(const QDate &date, const TimeRecord &rec)
 {
-    if (m_dbM == nullptr) return false;
+    if (m_dbM == nullptr) {
+        qWarning() << "RecordService::updateRecord: dbm 为空";
+        return false;
+    }
     m_suppressForward = true;
     m_opNotified = false;
     m_dbM->updateRecord(date.toString("yyyy-MM-dd"), rec.eventId,
                         rec.begTime, rec.endTime, rec.consumTime,
                         rec.counter, rec.detail, rec.eventClass);
     m_suppressForward = false;
-    if (!m_opNotified) return false;
+    if (!m_opNotified) {
+        qWarning() << "RecordService::updateRecord: 更新失败";
+        return false;
+    }
     emit dataChanged();
     return true;
 }
 
 bool RecordService::addEmptyRecord(const QDate &date, const TimeRecord &rec)
 {
-    if (m_dbM == nullptr) return false;
+    if (m_dbM == nullptr) {
+        qWarning() << "RecordService::addEmptyRecord: dbm 为空";
+        return false;
+    }
     m_suppressForward = true;
     m_opNotified = false;
     m_dbM->insertDataEnsureTable(date.toString("yyyy-MM-dd"),
                                   rec.begTime, rec.endTime, rec.consumTime,
                                   rec.counter, rec.detail, rec.eventClass);
     m_suppressForward = false;
-    if (!m_opNotified) return false;
+    if (!m_opNotified) {
+        qWarning() << "RecordService::addEmptyRecord: 插入失败";
+        return false;
+    }
     emit dataChanged();
     return true;
 }
@@ -174,6 +165,38 @@ QSet<QString> RecordService::markedDaysOfMonth(int year, int month)
         }
     }
     return marked;
+}
+
+// ---------- 周换算与统计工具（纯业务规则，不触数据库） ----------
+
+QPair<QDate, QDate> RecordService::weekRangeForIndex(int index)
+{
+    // 周公式与旧版 chartPage 完全一致：索引 0 = 最近一周（today-7 ~ today-1），
+    // 索引每 +1 向前推一周，区间连续且不重叠
+    const QDate today = QDate::currentDate();
+    const QDate start = today.addDays((index + 1) * (-7));
+    const QDate end = today.addDays(index * (-7) - 1);
+    return {start, end};
+}
+
+QStringList RecordService::weekDaysForIndex(int index)
+{
+    // 该周的 7 天日期列表，从区间起始日起逐日递增
+    const QDate start = weekRangeForIndex(index).first;
+    QStringList days;
+    for (int i = 0; i < 7; ++i) {
+        days << start.addDays(i).toString("yyyy-MM-dd");
+    }
+    return days;
+}
+
+int RecordService::sumMinutes(const QMap<QString, int> &classConsume)
+{
+    int sum = 0;
+    for (auto it = classConsume.constBegin(); it != classConsume.constEnd(); ++it) {
+        sum += it.value();
+    }
+    return sum;
 }
 
 void RecordService::onDbDataChanged()

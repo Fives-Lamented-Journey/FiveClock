@@ -77,7 +77,7 @@ chartPage::~chartPage()
 // 注入记录业务服务：页面通过它获取统计数据、订阅 dataChanged 信号，不再直连 dbm
 void chartPage::setRecordService(RecordService *service)
 {
-    // 保存指针供 generateData / generateWeekData 取数使用（构造期未注入时取数为空）
+    // 保存指针供绘制时取数使用（构造期未注入时取数为空）
     m_recordService = service;
     // UniqueConnection 防御重复注入导致的重复刷新；context 为 this，析构时自动断开
     connect(service, &RecordService::dataChanged, this, &chartPage::refreshCharts, Qt::UniqueConnection);
@@ -116,14 +116,17 @@ void chartPage::clearChart(QChart *chart)
 // 绘制饼状图的函数
 void chartPage::drawPieChart()
 {
-    // 生成绘制饼状图所需的数据
-    generateData();
     qDebug() << "Entering drawPieChart()";
+    // 从业务服务层获取指定日期的分类时长数据（分钟）
+    // 未注入时（构造期 setDate 会同步触发本槽），dayData 为空 —— 与旧版信号未被连接时的行为一致
+    const QMap<QString, int> dayData = m_recordService
+                                           ? m_recordService->dayClassConsume(selectedDay)
+                                           : QMap<QString, int>();
     // 清除消费时间统计图表的内容
     clearChart(consumChart);
 
     // 如果数据为空，显示无记录的背景图片
-    if (data.isEmpty()) {
+    if (dayData.isEmpty()) {
         ui->consumGraphicsView->setStyleSheet("background-image:url(:/pic/res/pic/noRecord-background.png);"
                                               "background-repeat:no-repeat;"
                                               "background-position: center;"
@@ -145,8 +148,8 @@ void chartPage::drawPieChart()
     // 设置饼状图的大小
     series->setPieSize(0.5);
     // 遍历数据，将数据添加到饼状图系列中
-    foreach (const QString &eventClass, data.keys()) {
-        series->append(eventClass, data[eventClass]);
+    foreach (const QString &eventClass, dayData.keys()) {
+        series->append(eventClass, dayData[eventClass]);
     }
 
     // 如果系列中没有切片，说明无数据可绘制，释放系列对象并返回
@@ -179,8 +182,8 @@ void chartPage::drawPieChart()
 
     // 将系列添加到消费时间统计图表中
     consumChart->addSeries(series);
-    // 计算总消费时间
-    int sum = getSumConsuTime();
+    // 计算总消费时间（汇总规则已下沉至 RecordService）
+    int sum = RecordService::sumMinutes(dayData);
     // 设置图表标题
     consumChart->setTitle(QString("记录总时长:%1h %2min").arg(sum / 60).arg(sum % 60));
 
@@ -199,8 +202,12 @@ void chartPage::drawPieChart()
 void chartPage::drawColChart(int index)
 {
     qDebug() << "执行drawCloChart函数";
-    // 生成绘制柱状图所需的周数据
-    generateWeekData(index);
+    // 周索引 → 日期列表（周换算规则已下沉至 RecordService 的 static 工具接口）
+    const QStringList weekDays = RecordService::weekDaysForIndex(index);
+    // 从业务服务层获取该周的分神数据（未注入时为空，与旧版信号未被连接时的行为一致）
+    const QMap<QString, int> weekData = m_recordService
+                                            ? m_recordService->weekCounterStats(weekDays)
+                                            : QMap<QString, int>();
     // 清除分神次数统计图表的内容
     clearChart(counterChart);
 
@@ -245,7 +252,7 @@ void chartPage::drawColChart(int index)
     // 创建 X 轴
     QBarCategoryAxis *axisX = new QBarCategoryAxis();
     // 将选中的周添加到 X 轴
-    axisX->append(selectedWeek);
+    axisX->append(weekDays);
     // 设置网格线不可见
     axisX->setGridLineVisible(false);
     // 将 X 轴添加到图表中，并设置对齐方式为底部
@@ -276,78 +283,16 @@ void chartPage::drawColChart(int index)
     ui->consumGraphicsView->update();
 }
 
-// 生成绘制饼状图所需的数据
-void chartPage::generateData()
-{
-    qDebug() << "Entering generateData";
-    // 清空数据
-    data.clear();
-
-    // 通过业务服务层获取指定日期的分类时长数据（分钟）
-    // 未注入时（构造期 setDate 会同步触发本槽），data 保持为空 —— 与旧版信号未被连接时的行为一致
-    if (m_recordService) {
-        data = m_recordService->dayClassConsume(selectedDay);
-    }
-    qDebug() << "Exiting generateData";
-}
-
-// 生成绘制柱状图所需的周数据
-void chartPage::generateWeekData(int index)
-{
-    // 清空周数据
-    weekData.clear();
-    // 获取选中的周
-    getSelectedWeek(index);
-
-    // 通过业务服务层获取选中周的分神数据
-    // 未注入时（构造期 UI 初始化链路可能触发本槽），weekData 保持为空 —— 与旧版信号未被连接时的行为一致
-    if (m_recordService) {
-        weekData = m_recordService->weekCounterStats(selectedWeek);
-    }
-}
-
 // 初始化周选择下拉框
 void chartPage::iniWeekCombox()
 {
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-    // 循环添加 4 周的日期范围到下拉框中
-    for (int i = 1; i <= 4; i++) {
-        QDate startDate = currentDate.addDays(i * (-7));
-        QDate endDate = currentDate.addDays((i - 1) * (-7) - 1);
-        ui->weekComboBox->addItem(startDate.toString("yyyy.MM.dd") + " -- " + endDate.toString("yyyy.MM.dd"));
+    // 依次添加最近 4 周的日期区间标签（周区间规则已下沉至 RecordService 的 static 工具接口；
+    // static 调用无需服务实例，构造期未注入服务时行为与旧版一致）
+    for (int i = 0; i < 4; i++) {
+        const QPair<QDate, QDate> range = RecordService::weekRangeForIndex(i);
+        ui->weekComboBox->addItem(range.first.toString("yyyy.MM.dd") + " -- "
+                                  + range.second.toString("yyyy.MM.dd"));
     }
-}
-
-// 获取选中的周的日期列表
-void chartPage::getSelectedWeek(int index)
-{
-    // 清空选中的周的日期列表
-    selectedWeek.clear();
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 计算一周前的日期
-    QDate oneWeekAgo = currentDate.addDays((index + 1) * (-7));
-
-    // 循环添加过去一周的日期到 selectedWeek 中
-    for (int i = 0; i < 7; ++i) {
-        QDate date = oneWeekAgo.addDays(i);
-        selectedWeek << date.toString("yyyy-MM-dd");
-    }
-}
-
-// 计算总消费时间
-int chartPage::getSumConsuTime()
-{
-    // 定义迭代器
-    QMap<QString, int>::ConstIterator i;
-    int sum = 0;
-    // 遍历 data 中的数据，累加消费时间
-    for (i = data.constBegin(); i != data.constEnd(); i++) {
-        sum += i.value();
-    }
-    return sum;
 }
 
 // 当日期编辑框中的日期发生变化时，更新选中的日期并重新绘制饼状图

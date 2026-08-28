@@ -28,9 +28,9 @@ find_package(Qt6 REQUIRED COMPONENTS
     MultimediaWidgets
 )
 
-# 源文件，完全复制你pro里的 SOURCES
-# 目录分层：src/ 实现与表单，include/ 公共头文件（与 src 平级）
-# 分层子目录：app 主窗口与全局窗口，pages 业务页面，widgets 自定义控件，db 数据层
+# ================================================================
+# 主应用 FiveClock
+# ================================================================
 add_executable(FiveClock
 
     # 入口
@@ -57,11 +57,16 @@ add_executable(FiveClock
 
     # cpp源文件 - service 业务服务层
     src/service/record_service.cpp
+    src/service/timer_service.cpp
+    src/service/notification_service.cpp
+
+    # cpp源文件 - config 配置服务
+    src/config/config_service.cpp
 
     # cpp源文件 - timer 计时模型
     src/timer/timermodel.cpp
 
-    # 头文件（CMake里HEADERS不是必须，但写上方便IDE索引）
+    # 头文件
     include/app/assempage.h
     include/app/splashpage.h
     include/app/petwindow.h
@@ -72,11 +77,17 @@ add_executable(FiveClock
     include/pages/subpage.h
     include/widgets/customcalendarwidget.h
     include/widgets/mybutton.h
+    include/db/idb_access.h
     include/db/sqldbm.h
-    include/service/record_service.h
-    include/timer/timermodel.h
 
-    # UI表单 FORMS（AUTOUIC 对 .ui 位置不敏感，生成的 ui_*.h 进入 autogen 全局 include 目录）
+    include/config/config_service.h
+    include/service/record_service.h
+    include/service/timer_service.h
+    include/service/notification_service.h
+    include/timer/timermodel.h
+    include/dto/time_record.h
+
+    # UI表单
     src/ui/assempage.ui
     src/ui/petwindow.ui
     src/ui/splashpage.ui
@@ -86,28 +97,22 @@ add_executable(FiveClock
     src/ui/infodialog.ui
     src/ui/subpage.ui
 
-    # 资源文件 RESOURCES += pic.qrc（相对路径引用 res/，保持项目根目录）
+    # 资源文件
     pic.qrc
 )
 
-# 源码按分层路径互相 include（#include "app/xxx.h" / "pages/xxx.h" / "widgets/xxx.h" / "db/xxx.h"），
-# 将公共头文件根目录加入搜索路径即可
 target_include_directories(FiveClock PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-# .ui 已集中到 src/ui，AUTOUIC 解析 cpp 中的 ui_*.h include 时
-# 除 cpp 同目录外还需在此目录查找 .ui 源文件
 set_target_properties(FiveClock PROPERTIES
     AUTOUIC_SEARCH_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
 )
 
-# Windows程序图标，对应 pro win32 { RC_ICONS = windowsIcon.ico }
 if(WIN32)
     target_sources(FiveClock PRIVATE windowsIcon.ico)
 endif()
 
-# 链接Qt6模块
 target_link_libraries(FiveClock
     Qt6::Core
     Qt6::Gui
@@ -118,9 +123,77 @@ target_link_libraries(FiveClock
     Qt6::MultimediaWidgets
 )
 
-# 安装规则，和原pro保持一致
 install(TARGETS FiveClock
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# ================================================================
+# 单元测试 FiveClockTests（GTest + GMock）
+# ================================================================
+option(BUILD_TESTS "Build unit tests" ON)
+
+if(BUILD_TESTS)
+    # 使用本地安装的 GTest/GMock
+    # 安装路径：G:\cppsoft\googletest-1.14.0-install
+    set(GTest_DIR "G:/cppsoft/googletest-1.14.0-install/lib/cmake/GTest" CACHE PATH "GTest cmake config")
+    find_package(GTest CONFIG REQUIRED)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+
+    # 测试可执行文件：仅编译服务层+数据层源文件（不含UI）
+    add_executable(FiveClockTests
+        # 服务层
+        src/service/record_service.cpp
+        src/service/timer_service.cpp
+        src/service/notification_service.cpp
+        # 数据层
+        src/db/sqldbm.cpp
+        # 计时模型
+        src/timer/timermodel.cpp
+        # 配置服务
+        src/config/config_service.cpp
+        # 测试用例
+        test/test_record_service.cpp
+        test/test_timer_service.cpp
+
+        # QObject 头文件（确保 AUTOMOC 处理 MOC 代码生成）
+        include/db/idb_access.h
+        include/db/sqldbm.h
+        include/service/record_service.h
+        include/service/timer_service.h
+        include/service/notification_service.h
+        include/timer/timermodel.h
+        include/config/config_service.h
+        include/dto/time_record.h
+        test/mock_db_access.h
+    )
+
+    # 测试目标覆盖 QT_NO_DEBUG_OUTPUT（允许 qDebug 输出用于诊断）
+    target_compile_definitions(FiveClockTests PRIVATE
+        QT_TEST
+    )
+    # 测试目标：取消 QT_NO_DEBUG_OUTPUT 限制
+    target_compile_options(FiveClockTests PRIVATE -UQT_NO_DEBUG_OUTPUT)
+
+    target_include_directories(FiveClockTests PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/test
+    )
+
+    target_link_libraries(FiveClockTests
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Sql
+        Qt6::Test
+        GTest::gtest
+        GTest::gtest_main
+        GTest::gmock
+        GTest::gmock_main
+    )
+
+    # 启用自动测试发现
+    enable_testing()
+    add_test(NAME FiveClockTests COMMAND FiveClockTests)
+endif()

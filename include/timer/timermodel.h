@@ -9,6 +9,9 @@ QT_BEGIN_NAMESPACE
 class QTimer;
 QT_END_NAMESPACE
 
+// ConfigService 前向声明（指针成员）
+class ConfigService;
+
 // TimerModel：计时业务状态模型
 // 封装 QElapsedTimer + QTimer(10ms) 实现的累加计时逻辑
 // 仅负责计时状态与信号发出，不涉及任何 UI / 数据库
@@ -18,6 +21,9 @@ class TimerModel : public QObject
 public:
     explicit TimerModel(QObject *parent = nullptr);
     ~TimerModel();
+
+    // 注入配置服务（读取计时相关常量）
+    void setConfigService(ConfigService *configService);
 
     // ---------- 计时控制 ----------
     // 开始计时（重复调用时 emit workingNow 并忽略）
@@ -84,6 +90,9 @@ private:
     // 本轮开始/结束时间字符串（HH:mm:ss）
     QString m_startTime;
     QString m_endTime;
+
+    // 注入的配置服务指针（读取计时相关常量）
+    ConfigService* m_configService = nullptr;
 };
 
 #endif // TIMERMODEL_H

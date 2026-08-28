@@ -31,7 +31,7 @@ bool sqlDBM::tableExits(QString &tableName) {
     return DB.tables().contains(tableName);
 }
 
-// 获取数据库中全部用户表名（批量接口：供日历一次性判断哪些日期有记录）
+// 获取数据库中全部用户表名
 QStringList sqlDBM::allTableNames() {
     return DB.tables();
 }
@@ -108,15 +108,17 @@ void sqlDBM::insertData(QString tableName, QString startTime, QString endTime,
 }
 
 // 向指定表中插入数据（若表不存在则先创建）
-void sqlDBM::insertDataEnsureTable(QString tableName, QString startTime, QString endTime,
-                                   int consumTime, int counter, QString detail, QString eventClass)
+void sqlDBM::insertDataEnsureTable(const QString &tableName, const QString &startTime,
+                                   const QString &endTime, int consumTime, int counter,
+                                   const QString &detail, const QString &eventClass)
 {
-    if (!tableExits(tableName))
+    if (!tableExits(const_cast<QString&>(tableName)))
     {
         // 如果表不存在，则创建表
-        creatTable(tableName);
+        QString name = tableName;
+        creatTable(name);
         // 插入数据到表中
-        insertData(tableName, startTime, endTime, consumTime, counter, detail, eventClass);
+        insertData(name, startTime, endTime, consumTime, counter, detail, eventClass);
         qDebug("addRecord02");
     }
     else
@@ -128,7 +130,7 @@ void sqlDBM::insertDataEnsureTable(QString tableName, QString startTime, QString
 }
 
 // 删除指定表中指定事件 ID 的记录
-void sqlDBM::deleteRecord(QString tableName, int eventId) {
+void sqlDBM::deleteRecord(const QString &tableName, int eventId) {
     QSqlQuery query;
     // 输出表名和事件 ID 用于调试
     qDebug() << tableName;
@@ -151,8 +153,10 @@ void sqlDBM::deleteRecord(QString tableName, int eventId) {
 }
 
 // 更新指定表中指定事件 ID 的记录
-void sqlDBM::updateRecord(QString tableName, int eventId, QString startTime, QString endTime,
-                          int consumTime, int counter, QString detail, QString eventClass)
+void sqlDBM::updateRecord(const QString &tableName, int eventId,
+                          const QString &startTime, const QString &endTime,
+                          int consumTime, int counter,
+                          const QString &detail, const QString &eventClass)
 {
     QSqlQuery query;
     // 构建更新记录的 SQL 语句
@@ -186,7 +190,7 @@ void sqlDBM::updateRecord(QString tableName, int eventId, QString startTime, QSt
 }
 
 // 获取指定表中按开始时间排序的记录
-QSqlQuery sqlDBM::sortedRecord(QString tableName) {
+QSqlQuery sqlDBM::sortedRecord(const QString &tableName) {
     QSqlQuery query;
     // 输出表名用于调试
     qDebug() << tableName;
@@ -205,9 +209,16 @@ QSqlQuery sqlDBM::sortedRecord(QString tableName) {
     return query;
 }
 
-// 获取指定日期中按事件分类分组并汇总消耗时间的记录
-QSqlQuery sqlDBM::returnConsuTime(QString selectedDay)
+// 获取指定日期的汇总消耗时间记录（业务封装：表不存在时返回空查询）
+QSqlQuery sqlDBM::consuTimeOfDay(const QString &selectedDay)
 {
+    if (!tableExits(const_cast<QString&>(selectedDay)))
+    {
+        // 如果表不存在，则返回空查询
+        return QSqlQuery();
+    }
+    qDebug() << "assReturnRecord called with selectedDay:" << selectedDay;
+
     QSqlQuery query;
     // 构建分组汇总的 SQL 语句
     QString groupAndSumQuery = QString("SELECT eventclass,SUM(consumTime) AS totalTime "
@@ -222,22 +233,8 @@ QSqlQuery sqlDBM::returnConsuTime(QString selectedDay)
     return query;
 }
 
-// 获取指定日期的汇总消耗时间记录（业务封装：表不存在时返回空查询）
-QSqlQuery sqlDBM::consuTimeOfDay(const QString &selectedDay)
-{
-    QString day = selectedDay;
-    if (!tableExits(day))
-    {
-        // 如果表不存在，则返回空查询
-        return QSqlQuery();
-    }
-    qDebug() << "assReturnRecord called with selectedDay:" << day;
-    // 调用数据库管理类的返回消耗时间记录方法
-    return returnConsuTime(day);
-}
-
 // 获取指定一周内每天的总计数时间
-QSqlQuery sqlDBM::returnSumCounterTime(QStringList selectedWeek)
+QSqlQuery sqlDBM::returnSumCounterTime(const QStringList &selectedWeek)
 {
     QSqlQuery query;
     // 构建查询一周内每天总计数时间的 SQL 语句

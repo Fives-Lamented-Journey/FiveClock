@@ -5,6 +5,7 @@
 #include "pages/infodialog.h"
 #include "widgets/mybutton.h"
 #include "service/record_service.h"
+#include "config/config_service.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QScrollBar>
@@ -88,6 +89,9 @@ subPage::subPage(QWidget *parent)
     showCard();
     // 连接日历日期选择信号到更新卡片列表的槽函数
     connect(calendar, &CustomCalendarWidget::dateSelected, this, &subPage::subUpdateCardList);
+
+    // 添加记录按钮：直接在 subPage 内唤起 InfoDialog → 调用 RecordService 新增
+    connect(subAddRecordButton, &QPushButton::clicked, this, &subPage::onAddRecordClicked);
 }
 
 // 析构函数，释放UI资源
@@ -96,13 +100,19 @@ subPage::~subPage()
     delete ui;
 }
 
-// 注入记录业务服务：页面通过它查询记录、订阅 dataChanged 信号，不再直连 dbm
+// 注入记录业务服务：页面通过它查询/增删改记录、订阅 dataChanged 信号
 void subPage::setRecordService(RecordService *service)
 {
     // 保存指针供 showCard 查询使用（构造期未注入时展示空记录）
     m_recordService = service;
     // UniqueConnection 防御重复注入导致的重复刷新；context 为 this，析构时自动断开
     connect(service, &RecordService::dataChanged, this, &subPage::refreshCards, Qt::UniqueConnection);
+}
+
+// 注入配置服务：页面通过它获取常量文本
+void subPage::setConfigService(ConfigService *service)
+{
+    m_configService = service;
 }
 
 // 数据变更通知的响应槽：刷新当前日期的卡片列表
@@ -140,7 +150,9 @@ void subPage::showCard()
         qDebug() << "records is empty";
         // 创建提示标签
         QLabel *tipLab = new QLabel();
-        tipLab->setText("记录为空,主人要记得坚持记录哦");
+        tipLab->setText(m_configService
+                        ? m_configService->emptyRecordTip()
+                        : QStringLiteral("记录为空"));
         // 设置滚动区域的背景颜色
         ui->scrollArea->setStyleSheet("background-color:red");
         // 设置提示标签的样式
@@ -183,10 +195,10 @@ void subPage::subUpdateCardList(const QDate &date)
     update();
 }
 
-// 更新卡片信息的函数
+// 更新卡片信息的函数（直接调用 RecordService，由 dataChanged 自动触发刷新）
 void subPage::subUpdateCard(card *oneCard)
 {
-    // 创建信息对话框（栈对象：exec 为模态阻塞，返回后自动析构，无需手动 delete）
+    // 创建信息对话框（栈对象：exec 为模态阻塞，返回后自动析构）
     infoDialog subDialog(this, oneCard->cardBegTime, oneCard->cardEndTime,
                          oneCard->cardConsuTime, oneCard->cardcounter,
                          oneCard->cardDetail, true);
@@ -194,13 +206,6 @@ void subPage::subUpdateCard(card *oneCard)
     // 如果对话框以接受方式关闭
     if (subDialog.exec() == QDialog::Accepted)
     {
-        qDebug() << subDialog.getstartLine();
-        qDebug() << subDialog.getendLine();
-        qDebug() << subDialog.getconsumBox();
-        qDebug() << subDialog.getcounterBox();
-        qDebug() << subDialog.getclassBox();
-        qDebug() << subDialog.getdetailText();
-
         // 更新卡片信息
         oneCard->cardBegTime = subDialog.getstartLine();
         oneCard->cardEndTime = subDialog.getendLine();
@@ -209,16 +214,59 @@ void subPage::subUpdateCard(card *oneCard)
         oneCard->cardClass = subDialog.getclassBox();
         oneCard->cardDetail = subDialog.getdetailText();
 
-        // 发出更新记录的信号（写库成功后由 dataChanged 通知触发 refreshCards 刷新）
-        emit updateRecord(oneCard);
+        // 组装 TimeRecord DTO，直接调用 RecordService 更新
+        if (m_recordService) {
+            TimeRecord rec;
+            rec.eventId = oneCard->cardEverntId;
+            rec.begTime = oneCard->cardBegTime;
+            rec.endTime = oneCard->cardEndTime;
+            rec.consumTime = oneCard->cardConsuTime;
+            rec.counter = oneCard->cardcounter;
+            rec.detail = oneCard->cardDetail;
+            rec.eventClass = oneCard->cardClass;
+
+            QDate date = QDate::fromString(oneCard->cardCreateDate, "yyyy-MM-dd");
+            m_recordService->updateRecord(date, rec);
+            // 写库成功后 RecordService::dataChanged 触发 refreshCards 自动刷新
+        }
     }
 }
 
-// 删除卡片信息的函数
+// 删除卡片信息的函数（直接调用 RecordService，由 dataChanged 自动触发刷新）
 void subPage::subDelCard(card *oneCard)
 {
-    // 发出删除记录的信号（写库成功后由 dataChanged 通知触发 refreshCards 刷新）
-    emit deleteRecord(oneCard);
+    if (m_recordService) {
+        QDate date = QDate::fromString(oneCard->cardCreateDate, "yyyy-MM-dd");
+        m_recordService->deleteRecord(date, oneCard->cardEverntId);
+        // 写库成功后 RecordService::dataChanged 触发 refreshCards 自动刷新
+    }
+}
+
+// 添加空记录的槽函数（直接调用 RecordService，由 dataChanged 自动触发刷新）
+void subPage::onAddRecordClicked()
+{
+    // 创建信息对话框（栈对象，默认空记录模式）
+    infoDialog subDialog(this, "", "", 0, 0, "", true);
+
+    if (subDialog.exec() == QDialog::Accepted)
+    {
+        // 组装 TimeRecord DTO
+        TimeRecord rec;
+        rec.begTime = subDialog.getstartLine();
+        rec.endTime = subDialog.getendLine();
+        rec.consumTime = subDialog.getconsumBox();
+        rec.counter = subDialog.getcounterBox();
+        rec.detail = subDialog.getdetailText();
+        rec.eventClass = subDialog.getclassBox();
+
+        // 使用当前选中日期
+        QDate date = QDate::fromString(selectedToday, "yyyy-MM-dd");
+
+        if (m_recordService) {
+            m_recordService->addEmptyRecord(date, rec);
+            // 写库成功后 RecordService::dataChanged 触发 refreshCards 自动刷新
+        }
+    }
 }
 
 // 绘制事件处理函数，用于绘制背景图片
