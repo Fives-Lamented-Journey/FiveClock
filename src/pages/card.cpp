@@ -3,6 +3,7 @@
 #include "widgets/mybutton.h"
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QFrame>
 
 // 构造函数的实现
 card::card(QWidget *parent,int cardEventId,
@@ -39,12 +40,14 @@ card::card(QWidget *parent,int cardEventId,
     // 设置详细信息的文本浏览器内容
     ui->detailTextBrowser->setText(cardDetail);
 
-    // 定义卡片框架的样式表
-    QString qssCardFrame="QFrame#cardframe{border:1px groove white;"
-                           "border-radius:20px;"
-                           "background-color: rgba(128, 128, 128, 128);}";
-    // 设置卡片框架的样式表
-    ui->cardframe->setStyleSheet(qssCardFrame);
+    // 卡片框架的边框/圆角/玻璃底样式由 app.qss 的 QFrame#cardframe 规则提供。
+    // QFrame 对 app 级样式表的背景/边框默认不走样式绘制，必须显式开启 WA_StyledBackground；
+    // 同时关闭系统原生面板框（StyledPanel），避免与 QSS 边框重复绘制。
+    ui->cardframe->setAttribute(Qt::WA_StyledBackground, true);
+    ui->cardframe->setFrameShape(QFrame::NoFrame);
+    // 内部嵌套框架仅作布局容器，同样关闭原生面板框（视觉由 QSS 展平）
+    ui->frame->setFrameShape(QFrame::NoFrame);
+    ui->delAltFrame->setFrameShape(QFrame::NoFrame);
 
     // 创建水平布局
     cardHbox=new QHBoxLayout();

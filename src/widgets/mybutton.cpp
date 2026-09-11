@@ -14,8 +14,7 @@ mybutton::mybutton(const QString &normalIconPath, const QString &hoverIconPath,
     setIcon(QIcon(normalPixmap));
     // 设置图标大小为 32x32 像素
     setIconSize(QSize(32, 32));
-    // 设置按钮的样式表，使其背景透明，无边框，无内边距和外边距
-    this->setStyleSheet("background: transparent;border:none;padding: 0; margin: 0;");
+    // 透明底/无边框样式由全局样式表 app.qss 的 mybutton 规则提供
 
     // 连接按钮的按下信号到 onPressed 槽函数
     connect(this, &QPushButton::pressed, this, &mybutton::onPressed);

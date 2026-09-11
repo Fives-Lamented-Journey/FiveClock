@@ -2,6 +2,7 @@
 #include "app/splashpage.h"
 
 #include <QApplication>
+#include <QFile>
 #include <QPropertyAnimation>
 
 // ================================================================
@@ -10,6 +11,16 @@
 // ================================================================
 
 namespace {
+
+// 加载全局样式表（U-1a：样式统一收敛至 res/style/app.qss）
+// 打开失败时保持无全局样式（与迁移前行为一致），不中断启动
+void applyGlobalStyle(QApplication &app)
+{
+    QFile qss(":/style/res/style/app.qss");
+    if (qss.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        app.setStyleSheet(QString::fromUtf8(qss.readAll()));
+    }
+}
 
 // 创建主窗口淡入动画
 // 注意：parent 为 qApp，动画对象与进程同生命周期（原实现如此，保持不变）
@@ -41,6 +52,9 @@ void connectStartupFlow(splashPage *splash, assemPage &mainWindow, QPropertyAnim
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    // 全局样式表（U-1a：res/style/app.qss）
+    applyGlobalStyle(a);
 
     // 闪屏（heap + WA_DeleteOnClose 自动释放）
     splashPage *splash = new splashPage();

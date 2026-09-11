@@ -9,6 +9,8 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QScrollBar>
+#include <QPalette>
+#include <QBrush>
 #include <QDate>
 #include <QPainter>
 
@@ -42,8 +44,14 @@ subPage::subPage(QWidget *parent)
 
     // 创建子部件和布局
     subWidget = new QWidget(this);
+    // 内容容器保持透明：天空底由视口的画刷提供（见 updateViewportSkyBrush），
+    // 卡片直接浮于天空图上，与日历区视觉一致
+    subWidget->setObjectName("scrollContents");
     subHbox = new QVBoxLayout();
     subScrollVbox = new QVBoxLayout();
+    // 玻璃卡片之间的垂直间距与滚动区边距
+    subScrollVbox->setSpacing(12);
+    subScrollVbox->setContentsMargins(12, 12, 12, 12);
 
     // 创建垂直布局并添加按钮
     QVBoxLayout* vBox = new QVBoxLayout();
@@ -68,6 +76,13 @@ subPage::subPage(QWidget *parent)
     subWidget->setLayout(subScrollVbox);
     // 将子部件添加到滚动区域
     ui->scrollArea->setWidget(subWidget);
+
+    // 滚动性能关键：视口不透明（天空图无 alpha）以启用 Qt 滚动块拷贝快路径，
+    // 拖动滑块时只重绘暴露条而非全视口；底图为平移对齐的天空画刷，与页面背景无缝连续
+    ui->scrollArea->viewport()->setAutoFillBackground(true);
+    updateViewportSkyBrush();
+    // 滚轮步进调小（Qt 默认单步约 3 行字号，一次滚过头，手感发"跳"）
+    ui->scrollArea->verticalScrollBar()->setSingleStep(6);
 
     // 设置添加记录按钮的父部件为滚动区域
     subAddRecordButton->setParent(ui->scrollArea);
@@ -120,8 +135,8 @@ void subPage::refreshCards()
 {
     // 显示卡片记录
     showCard();
-    // 重绘页面
-    repaint();
+    // 请求重绘（update 会合并多次请求为一次绘制，repaint 的同步立即重绘会造成卡顿）
+    update();
 }
 
 // 显示卡片记录的函数
@@ -153,10 +168,8 @@ void subPage::showCard()
         tipLab->setText(m_configService
                         ? m_configService->emptyRecordTip()
                         : QStringLiteral("记录为空"));
-        // 设置滚动区域的背景颜色
-        ui->scrollArea->setStyleSheet("background-color:red");
-        // 设置提示标签的样式
-        tipLab->setStyleSheet("font-size:50px;color:white");
+        // 设置提示标签的 objectName 供全局样式表匹配（样式由 app.qss 的 QLabel#emptyRecordTip 提供）
+        tipLab->setObjectName("emptyRecordTip");
         // 将提示标签添加到滚动布局中
         subScrollVbox->addWidget(tipLab);
     }
@@ -273,10 +286,14 @@ void subPage::onAddRecordClicked()
 void subPage::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
+    // 背景缩放缓存：仅在窗口尺寸变化时重算一次，其余帧直接贴图
+    // （每帧从 qrc 解码 PNG 并拉伸大图是滚动卡顿的根因）
+    if (m_bgScaled.size() != size()) {
+        m_bgScaled = QPixmap(":/pic/res/pic/bgi05.png")
+                         .scaled(size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
     QPainter painter(this);
-    QPixmap pic(":/pic/res/pic/bgi14.jpg");
-    // 绘制背景图片
-    painter.drawPixmap(0, 0, width(), height(), pic);
+    painter.drawPixmap(0, 0, m_bgScaled);
     // 调用基类的绘制事件处理函数
     QWidget::paintEvent(event);
 }
@@ -286,10 +303,37 @@ void subPage::resizeEvent(QResizeEvent *event)
 {
     // 调用基类的窗口大小改变事件处理函数
     QWidget::resizeEvent(event);
+    // 布局稳定后刷新视口天空画刷（缩放缓存 + 平移对齐量都随尺寸/位置变化）
+    updateViewportSkyBrush();
     // 发出窗口大小改变的信号
     emit resized();
     // 更新页面
     update();
+}
+
+// 滚动区视口的天空画刷：以缩放缓存的天空图为不透明底，平移 scrollArea
+// 在页面中的位置量，使视口内天空与周边（侧栏/日历区）背景无缝连续；
+// 视口不透明（图片无 alpha）保住滚动块拷贝快路径
+void subPage::updateViewportSkyBrush()
+{
+    if (!ui->scrollArea || size().isEmpty())
+        return;
+
+    // 背景缩放缓存：仅在窗口尺寸变化时重算一次
+    if (m_bgScaled.size() != size()) {
+        m_bgScaled = QPixmap(":/pic/res/pic/bgi05.png")
+                         .scaled(size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
+
+    QWidget *vp = ui->scrollArea->viewport();
+    const QPoint pagePos = ui->scrollArea->pos();
+    QBrush skyBrush(m_bgScaled);
+    // 设备坐标 (x,y) 采样图片 (x - pagePos.x(), y - pagePos.y())，
+    // 与 subPage::paintEvent 在 (0,0) 绘制整页背景的坐标对齐
+    skyBrush.setTransform(QTransform::fromTranslate(pagePos.x(), pagePos.y()));
+    QPalette vpPal = vp->palette();
+    vpPal.setBrush(QPalette::Window, skyBrush);
+    vp->setPalette(vpPal);
 }
 
 // 更新添加按钮位置的函数
@@ -307,11 +351,14 @@ void subPage::updateAddButtonPosition()
 
     // 将坐标转换为滚动区域的坐标系
     QPoint pos = viewport->mapTo(ui->scrollArea, QPoint(x, y));
-
-    // 设置按钮的位置
-    subAddRecordButton->move(pos);
-    // 将按钮置于顶层
-    subAddRecordButton->raise();
+    // 仅在位置真正变化时才 move/raise：滚动条拖动时 valueChanged 高频触发，
+    // 每次都 raise 会造成无谓的层叠调整开销
+    if (subAddRecordButton->pos() != pos) {
+        // 设置按钮的位置
+        subAddRecordButton->move(pos);
+        // 将按钮置于顶层
+        subAddRecordButton->raise();
+    }
 }
 
 // 重写显示事件处理函数，确保首次显示时按钮位置正确

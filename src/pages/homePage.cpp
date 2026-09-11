@@ -90,15 +90,13 @@ Widget::Widget(QWidget *parent)
     hBox->addStretch(1);
     ui->button_frame->setLayout(hBox);
 
-    // LCD 初始化
+    // LCD 初始化（去边框/白色文字样式由 app.qss 的 QLCDNumber#startLcd/#nowLcd 规则提供）
     ui->startLcd->display("00:00:00");
-    ui->startLcd->setStyleSheet("border:none;color:white;");
     QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(this);
     opacityEffect->setOpacity(0.7);
     ui->startLcd->setGraphicsEffect(opacityEffect);
 
     ui->nowLcd->display("00:00:00");
-    ui->nowLcd->setStyleSheet("border:none;color:white");
 
     // 信号连接：now_timer → 当前时间 LCD 刷新
     connect(now_timer, &QTimer::timeout, this, &Widget::do_now_timer_timeout);

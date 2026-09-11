@@ -6,6 +6,7 @@
 #include <QApplication>
 #include <QDebug>
 #include <QSet>
+#include <QStyle>
 #include <qtimer.h>
 
 // 注入记录业务服务：部件通过它批量查询有记录日期、订阅 dataChanged 信号，不再直连 dbm
@@ -27,51 +28,30 @@ void CustomCalendarWidget::onDataChanged()
 // 替代原先逐按钮发信号查询的用法（每次刷新由 N 次数据库往返降为 1 次）
 void CustomCalendarWidget::refreshDayStyles()
 {
-    // 定义空日期按钮样式
-    static const QString dayEmptyButtonStyle = QString("QPushButton {"
-                                                       "    background-color:rgba(224,224,224,128);"
-                                                       "    color: #333333;"
-                                                       "    border: none;"
-                                                       "    padding: 0px;"
-                                                       "    border-radius: 5px;"
-                                                       "}"
-                                                       "QPushButton:hover {"
-                                                       "    background-color:rgba(255,255,255,128);"
-                                                       "}");
-    // 定义非空日期按钮样式
-    static const QString dayNoEmptyButtonStyle = QString("QPushButton {"
-                                                         "    background-color:rgba(152 ,245 ,255,128);"
-                                                         "    color: #333333;"
-                                                         "    border: none;"
-                                                         "    padding: 0px;"
-                                                         "    border-radius: 5px;"
-                                                         "}"
-                                                         "QPushButton:hover {"
-                                                         "    background-color:rgba(152 ,245 ,255,200);"
-                                                         "}");
-
     // 收集当月有记录的日期（服务层沿用"表存在且有记录"的判断条件，一次批量返回）
     QSet<QString> markedDays;
     if (m_recordService) {
         markedDays = m_recordService->markedDaysOfMonth(currentDate.year(), currentDate.month());
     }
 
-    // 遍历网格中的日期按钮，按是否有记录设置样式
+    // 遍历网格中的日期按钮，按是否有记录/是否今日设置动态属性
+    // （日期按钮样式由 app.qss 的 CustomCalendarWidget QPushButton[markedDay=...]/[isToday=...] 规则提供）
+    const QDate today = QDate::currentDate();
     for (int i = 2; i < 7; ++i) {
         for (int j = 0; j < gridLayout->columnCount(); ++j) {
             QLayoutItem* item = gridLayout->itemAtPosition(i, j);
             if (item) {
                 if (QPushButton* btn = qobject_cast<QPushButton*>(item->widget())) {
                     // 将按钮对应的日期转换为 yyyy-MM-dd 字符串
-                    QString strDay = QDate(currentDate.year(), currentDate.month(),
-                                           btn->text().toInt()).toString("yyyy-MM-dd");
-                    if (markedDays.contains(strDay)) {
-                        // 有记录则设置非空日期按钮样式
-                        btn->setStyleSheet(dayNoEmptyButtonStyle);
-                    } else {
-                        // 否则设置空日期按钮样式
-                        btn->setStyleSheet(dayEmptyButtonStyle);
-                    }
+                    QDate day(currentDate.year(), currentDate.month(), btn->text().toInt());
+                    QString strDay = day.toString("yyyy-MM-dd");
+                    // 设置动态属性并强制刷新样式：
+                    // onDataChanged 触发的刷新发生在按钮已显示之后，
+                    // 属性变化需 unpolish/polish 才能让属性选择器规则重新生效
+                    btn->setProperty("markedDay", markedDays.contains(strDay));
+                    btn->setProperty("isToday", day == today);
+                    btn->style()->unpolish(btn);
+                    btn->style()->polish(btn);
                 }
             }
         }
@@ -105,39 +85,15 @@ CustomCalendarWidget::CustomCalendarWidget(QWidget* parent) : QWidget(parent)
     // 当用户点击下一个月按钮时，会触发nextMonth函数
     connect(nextButton, &QPushButton::clicked, this, &CustomCalendarWidget::nextMonth);
 
-    // 设置按钮的样式
-    // 正常状态下背景颜色为#4CAF50，白色文字，无边界，有内边距和圆角
-    // 悬停时背景颜色变为#45a049
-    QString buttonStyle = "QPushButton {"
-                          "    background-color: #4CAF50;"
-                          "    color: white;"
-                          "    border: none;"
-                          "    padding: 5px 10px;"
-                          "    border-radius: 5px;"
-                          "}"
-                          "QPushButton:hover {"
-                          "    background-color: #45a049;"
-                          "}";
+    // 设置翻月按钮的动态属性
+    // （样式由 app.qss 的 QPushButton[calendarNavButton="true"] 规则提供：
+    //   绿色底/白字/圆角，悬停加深）
+    prevButton->setProperty("calendarNavButton", true);
+    nextButton->setProperty("calendarNavButton", true);
 
-    // 应用按钮样式到上一个月按钮
-    prevButton->setStyleSheet(buttonStyle);
-
-    // 应用按钮样式到下一个月按钮
-    nextButton->setStyleSheet(buttonStyle);
-
-    // 设置月份和年份标签的样式
-    // 字体大小18px，加粗，文字颜色#333，有内边距
-    QString labelStyle = "QLabel {"
-                         "    font-size: 18px;"
-                         "    font-weight: bold;"
-                         "    color: #333;"
-                         "    padding: 0px;"
-                         "    border-radius:15px;"
-                         "    background-color:rgba(0,0,0,0)"
-                         "}";
-
-    // 应用标签样式到月份和年份标签
-    monthYearLabel->setStyleSheet(labelStyle);
+    // 设置月份和年份标签的 objectName
+    // （样式由 app.qss 的 QLabel#calendarMonthYearLabel 规则提供：18px 加粗/透明底/圆角）
+    monthYearLabel->setObjectName("calendarMonthYearLabel");
 
     // 将上一个月按钮添加到网格布局的第0行第0列
     gridLayout->addWidget(prevButton, 0, 0);
@@ -151,27 +107,17 @@ CustomCalendarWidget::CustomCalendarWidget(QWidget* parent) : QWidget(parent)
     // 星期几的表头列表
     QStringList headers = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
-    // 表头标签的样式
-    // 字体加粗，文字颜色#666，有内边距，文本居中
-    QString headerStyle = "QLabel {"
-                          "    font-weight: bold;"
-                          "    color: #000;"
-                          "    padding: 40px;"
-                          "    text-align: center;"
-                          "    background-color:rgba(255,255,255,0)"
-                          "}";
-
     // 循环创建并添加表头标签到网格布局的第1行
+    // （样式由 app.qss 的 QLabel[calendarHeaderLabel="true"] 规则提供：加粗/透明底/大内边距）
     for (int i = 0; i < 7; ++i) {
         QLabel* headerLabel = new QLabel(headers[i], this);
-        headerLabel->setStyleSheet(headerStyle);
+        headerLabel->setProperty("calendarHeaderLabel", true);
 
         gridLayout->addWidget(headerLabel, 1, i);
         headerLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     }
 
-    // 设置日历组件的背景颜色为白色
-    this->setStyleSheet("background-color: white;");
+    // 日历整体白色背景由 app.qss 的 CustomCalendarWidget 规则提供
 
     // 将当前显示的日期初始化为系统当前日期
     currentDate = QDate::currentDate();

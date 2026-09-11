@@ -99,6 +99,7 @@ add_executable(FiveClock
 
     # 资源文件
     pic.qrc
+    style.qrc
 )
 
 target_include_directories(FiveClock PRIVATE

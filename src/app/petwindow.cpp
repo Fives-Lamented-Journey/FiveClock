@@ -24,8 +24,8 @@ petwindow::petwindow(QWidget *parent)
     time->setDigitCount(8);
     // 设置 QLCDNumber 的位置和大小
     time->setGeometry(50,0,100,40);
-    // 设置 QLCDNumber 的样式表，去除边框
-    time->setStyleSheet("border:none");
+    // 设置 objectName 供全局样式表匹配（去边框样式由 app.qss 的 QLCDNumber#petLcd 提供）
+    time->setObjectName("petLcd");
     // 初始显示时间为 00:00:00
     time->display("00:00:00");
     // 显示 QLCDNumber

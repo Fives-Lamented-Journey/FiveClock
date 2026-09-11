@@ -5,6 +5,7 @@
 #include <QtCharts>
 #include <QVBoxLayout>
 #include <QPainter>
+#include <QStyle>
 
 // 构造函数，初始化 chartPage 类的对象
 chartPage::chartPage(QWidget *parent)
@@ -126,19 +127,21 @@ void chartPage::drawPieChart()
     clearChart(consumChart);
 
     // 如果数据为空，显示无记录的背景图片
+    // （背景图由 app.qss 的 QGraphicsView[emptyDay="true"] 规则提供，
+    //   视图已显示状态下属性变化需 unpolish/polish 刷新样式）
     if (dayData.isEmpty()) {
-        ui->consumGraphicsView->setStyleSheet("background-image:url(:/pic/res/pic/noRecord-background.png);"
-                                              "background-repeat:no-repeat;"
-                                              "background-position: center;"
-                                              "background-attachment: fixed;"
-                                              );
+        ui->consumGraphicsView->setProperty("emptyDay", true);
+        ui->consumGraphicsView->style()->unpolish(ui->consumGraphicsView);
+        ui->consumGraphicsView->style()->polish(ui->consumGraphicsView);
         ui->consumGraphicsView->setChart(consumChart);
         return;
     }
     else
     {
-        // 清除样式表
-        ui->consumGraphicsView->setStyleSheet("");
+        // 复位空状态属性，清除无记录背景图
+        ui->consumGraphicsView->setProperty("emptyDay", false);
+        ui->consumGraphicsView->style()->unpolish(ui->consumGraphicsView);
+        ui->consumGraphicsView->style()->polish(ui->consumGraphicsView);
     }
 
     // 创建饼状图系列
@@ -211,21 +214,21 @@ void chartPage::drawColChart(int index)
     // 清除分神次数统计图表的内容
     clearChart(counterChart);
 
-    // 如果周数据为空，显示无周记录的背景图片
+    // 如果周数据为空，显示无周记录的背景图片（样式机制同上 emptyDay）
     if (weekData.isEmpty()) {
         qDebug() << "weekData的记录为空";
-        ui->counterGraphicsView->setStyleSheet("background-image:url(:/pic/res/pic/noWeekRecord.png);"
-                                               "background-repeat:no-repeat;"
-                                               "background-position: center;"
-                                               "background-attachment: fixed;"
-                                               );
+        ui->counterGraphicsView->setProperty("emptyWeek", true);
+        ui->counterGraphicsView->style()->unpolish(ui->counterGraphicsView);
+        ui->counterGraphicsView->style()->polish(ui->counterGraphicsView);
         ui->counterGraphicsView->setChart(counterChart);
         return;
     }
     else
     {
-        // 清除样式表
-        ui->counterGraphicsView->setStyleSheet("");
+        // 复位空状态属性，清除无周记录背景图
+        ui->counterGraphicsView->setProperty("emptyWeek", false);
+        ui->counterGraphicsView->style()->unpolish(ui->counterGraphicsView);
+        ui->counterGraphicsView->style()->polish(ui->counterGraphicsView);
     }
 
     // 创建柱状图集合

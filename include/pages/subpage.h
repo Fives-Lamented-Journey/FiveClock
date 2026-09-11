@@ -94,6 +94,14 @@ private:
     // UI对象指针
     Ui::subPage *ui;
 
+    // 背景图的缩放缓存：仅在窗口尺寸变化时重算，避免每次重绘都缩放大图（卡顿主因）
+    QPixmap m_bgScaled;
+
+private:
+    // 滚动区视口的天空画刷：以平移对齐的天空图为不透明底，
+    // 替代渐变面板；视口不透明保住滚动块拷贝快路径
+    void updateViewportSkyBrush();
+
 protected:
     // 绘制事件处理函数
     void paintEvent(QPaintEvent *event) override;

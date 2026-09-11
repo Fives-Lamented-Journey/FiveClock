@@ -26,15 +26,14 @@ splashPage::splashPage(QWidget *parent)
     QStringList fontFamilies = QFontDatabase::applicationFontFamilies(fontId);
     // 创建自定义字体对象，字体大小为 20
     QFont customFont("ZhouZiFang", 20);
-    // 设置字体颜色样式
-    QString style=QString("color:rgba(0,0,0,222)");
+    // 字体颜色样式由 app.qss 的 QLabel#splashSentenceLabel 规则提供
 
     // 在标签上显示随机生成的句子
     ui->label->setText(generateSentence());
     // 设置标签的字体为自定义字体
     ui->label->setFont(customFont);
-    // 设置标签的样式
-    ui->label->setStyleSheet(style);
+    // 设置 objectName 供全局样式表匹配（原局部颜色样式已迁移至 app.qss）
+    ui->label->setObjectName("splashSentenceLabel");
 
     // 创建定时器对象
     splaTimer=new QTimer(this);
