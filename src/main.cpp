@@ -4,6 +4,8 @@
 #include <QApplication>
 #include <QFile>
 #include <QPropertyAnimation>
+#include "fivecore/util/sha256_utils.h"
+#include "fivecore/util/string_utils.h"
 
 // ================================================================
 // 启动流程（B-14e：以具名函数封装，main 只保留骨架顺序）
@@ -47,11 +49,18 @@ void connectStartupFlow(splashPage *splash, assemPage &mainWindow, QPropertyAnim
     });
 }
 
-} // namespace
+} //
+namespace
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+
+    // 在main函数内或者某个构造函数中
+    auto s = fivecore::util::trim("   hello fivecore   ");
+    qDebug() << QString::fromStdString(s);
+    auto hash_stub = fivecore::util::sha256_string("test123");
+    qDebug() << QString::fromStdString(hash_stub);
 
     // 全局样式表（U-1a：res/style/app.qss）
     applyGlobalStyle(a);

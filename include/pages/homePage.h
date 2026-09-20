@@ -2,6 +2,7 @@
 #define HOMEPAGE_H
 
 #include <QWidget>
+#include <QPixmap>         // m_bgScaled 背景缩放缓存
 #include <QDateTime>       // m_time 为值成员，需要完整类型
 
 QT_BEGIN_NAMESPACE
@@ -79,6 +80,7 @@ private:
 
     QTimer *now_timer = nullptr;        // 刷新当前时间 LCD（纯 UI）
     QDateTime m_time;
+    QPixmap m_bgScaled;                 // 背景缩放缓存（仅尺寸变化时重算，避免每帧拉伸）
 
     TimerService *m_timerService = nullptr;   // 计时业务服务（计时控制）
     RecordService *m_recordService = nullptr;  // 记录业务服务（查询/记录操作）

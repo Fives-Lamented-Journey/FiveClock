@@ -6,7 +6,6 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QGraphicsOpacityEffect>
 #include <QPainter>
 
 // 构造函数：初始化 UI 按钮与 now_timer（纯显示用）
@@ -15,6 +14,14 @@ Widget::Widget(QWidget *parent)
     , ui(new Ui::Widget)
 {
     ui->setupUi(this);
+
+    // QFrame 默认不绘制 app 级 QSS 的背景/边框，必须显式开启 WA_StyledBackground；
+    // 三栏玻璃容器（左导航/计时面板/右品牌区）的样式由 app.qss 提供
+    ui->homePageFrame->setAttribute(Qt::WA_StyledBackground, true);
+    ui->timerGlass->setAttribute(Qt::WA_StyledBackground, true);
+    ui->rightFrame->setAttribute(Qt::WA_StyledBackground, true);
+    // 计时面板给足最小宽度，避免被两侧弹簧挤窄导致大号 LCD 放不下
+    ui->timerGlass->setMinimumWidth(560);
 
     // 初始化所有 mybutton（统一以 this 为 parent）
     homeButton = new mybutton(":/icon/res/icon/home_pressed.png",
@@ -90,11 +97,18 @@ Widget::Widget(QWidget *parent)
     hBox->addStretch(1);
     ui->button_frame->setLayout(hBox);
 
-    // LCD 初始化（去边框/白色文字样式由 app.qss 的 QLCDNumber#startLcd/#nowLcd 规则提供）
+    // LCD 初始化：QLCDNumber 段码按 widget 尺寸自适应缩放，
+    // 单靠 stylesheet font-size 不够，需同时设最小尺寸 + Expanding 策略让它真正占满空间。
+    ui->nowLcd->setStyleSheet("border: none; color: rgba(255, 255, 255, 0.75);");
+    ui->nowLcd->setFont(QFont("Arial", 22));
+    ui->nowLcd->setMinimumHeight(60);
+    ui->nowLcd->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    ui->startLcd->setStyleSheet("border: none; color: white;");
+    ui->startLcd->setFont(QFont("Arial", 72));
+    ui->startLcd->setMinimumHeight(150);
+    ui->startLcd->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->startLcd->display("00:00:00");
-    QGraphicsOpacityEffect *opacityEffect = new QGraphicsOpacityEffect(this);
-    opacityEffect->setOpacity(0.7);
-    ui->startLcd->setGraphicsEffect(opacityEffect);
 
     ui->nowLcd->display("00:00:00");
 
@@ -265,9 +279,14 @@ void Widget::onTimerNotWorking()
 void Widget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
+    // 背景缩放缓存：仅在窗口尺寸变化时重算一次，其余帧直接贴图
+    // （每帧从 qrc 解码 PNG 并拉伸大图是拖动/调整窗口卡顿的根因，与 subPage 策略一致）
+    if (m_bgScaled.size() != size()) {
+        m_bgScaled = QPixmap(":/pic/res/pic/bgi05.png")
+                         .scaled(size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
     QPainter painter(this);
-    QPixmap pic(":/pic/res/pic/bgi05.png");
-    painter.drawPixmap(0, 0, width(), height(), pic);
+    painter.drawPixmap(0, 0, m_bgScaled);
     QWidget::paintEvent(event);
 }
 

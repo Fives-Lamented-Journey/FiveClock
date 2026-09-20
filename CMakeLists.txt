@@ -28,6 +28,8 @@ find_package(Qt6 REQUIRED COMPONENTS
     MultimediaWidgets
 )
 
+add_subdirectory(libfivecore)
+
 # ================================================================
 # 主应用 FiveClock
 # ================================================================
@@ -122,6 +124,8 @@ target_link_libraries(FiveClock
     Qt6::Charts
     Qt6::Multimedia
     Qt6::MultimediaWidgets
+
+    fivecore
 )
 
 install(TARGETS FiveClock
@@ -154,6 +158,9 @@ if(BUILD_TESTS)
         src/timer/timermodel.cpp
         # 配置服务
         src/config/config_service.cpp
+        # 【新增】libfivecore单元测试
+        test/test_fivecore_util.cpp
+
         # 测试用例
         test/test_record_service.cpp
         test/test_timer_service.cpp
@@ -168,6 +175,7 @@ if(BUILD_TESTS)
         include/config/config_service.h
         include/dto/time_record.h
         test/mock_db_access.h
+
     )
 
     # 测试目标覆盖 QT_NO_DEBUG_OUTPUT（允许 qDebug 输出用于诊断）
@@ -192,6 +200,8 @@ if(BUILD_TESTS)
         GTest::gtest_main
         GTest::gmock
         GTest::gmock_main
+
+        fivecore
     )
 
     # 启用自动测试发现
