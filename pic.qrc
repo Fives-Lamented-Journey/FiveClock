@@ -61,6 +61,12 @@
         <file>res/icon/chartButton_ini.png</file>
         <file>res/icon/chartButton_pressed.png</file>
         <file>windowsIcon.ico</file>
+        <file>res/icon/upload_hover_button.png</file>
+        <file>res/icon/upload_ini_button.png</file>
+        <file>res/icon/upload_pressed_button.png</file>
+        <file>res/icon/download_hover_button.png</file>
+        <file>res/icon/download_ini_button.png</file>
+        <file>res/icon/download_pressed_button.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>res/font/ZhouZiFang.ttf</file>

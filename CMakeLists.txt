@@ -15,7 +15,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 对应pro：DEFINES += QT_NO_DEBUG_OUTPUT
-add_compile_definitions(QT_NO_DEBUG_OUTPUT)
+#add_compile_definitions(QT_NO_DEBUG_OUTPUT)
+
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(QT_NO_DEBUG_OUTPUT)
+endif()
 
 # 寻找Qt6全部需要的组件
 find_package(Qt6 REQUIRED COMPONENTS
@@ -29,7 +33,8 @@ find_package(Qt6 REQUIRED COMPONENTS
 )
 
 add_subdirectory(libfivecore)
-
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog REQUIRED)
 # ================================================================
 # 主应用 FiveClock
 # ================================================================
@@ -49,6 +54,7 @@ add_executable(FiveClock
     src/pages/homePage.cpp
     src/pages/infodialog.cpp
     src/pages/subpage.cpp
+    src/pages/backuplogdialog.cpp
 
     # cpp源文件 - widgets
     src/widgets/customcalendarwidget.cpp
@@ -61,6 +67,8 @@ add_executable(FiveClock
     src/service/record_service.cpp
     src/service/timer_service.cpp
     src/service/notification_service.cpp
+    src/service/backup_service.cpp
+
 
     # cpp源文件 - config 配置服务
     src/config/config_service.cpp
@@ -77,15 +85,20 @@ add_executable(FiveClock
     include/pages/homePage.h
     include/pages/infodialog.h
     include/pages/subpage.h
+    include/pages/backuplogdialog.h
+
     include/widgets/customcalendarwidget.h
     include/widgets/mybutton.h
     include/db/idb_access.h
     include/db/sqldbm.h
 
     include/config/config_service.h
+
     include/service/record_service.h
     include/service/timer_service.h
     include/service/notification_service.h
+    include/service/backup_service.h
+
     include/timer/timermodel.h
     include/dto/time_record.h
 
@@ -98,10 +111,12 @@ add_executable(FiveClock
     src/ui/homePage.ui
     src/ui/infodialog.ui
     src/ui/subpage.ui
+    src/ui/backuplogdialog.ui
 
     # 资源文件
     pic.qrc
     style.qrc
+
 )
 
 target_include_directories(FiveClock PRIVATE
@@ -126,6 +141,8 @@ target_link_libraries(FiveClock
     Qt6::MultimediaWidgets
 
     fivecore
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog
 )
 
 install(TARGETS FiveClock
@@ -152,12 +169,15 @@ if(BUILD_TESTS)
         src/service/record_service.cpp
         src/service/timer_service.cpp
         src/service/notification_service.cpp
+        src/service/backup_service.cpp
+
         # 数据层
         src/db/sqldbm.cpp
         # 计时模型
         src/timer/timermodel.cpp
         # 配置服务
         src/config/config_service.cpp
+
         # 【新增】libfivecore单元测试
         test/test_fivecore_util.cpp
 
@@ -165,12 +185,15 @@ if(BUILD_TESTS)
         test/test_record_service.cpp
         test/test_timer_service.cpp
 
+
         # QObject 头文件（确保 AUTOMOC 处理 MOC 代码生成）
         include/db/idb_access.h
         include/db/sqldbm.h
         include/service/record_service.h
         include/service/timer_service.h
         include/service/notification_service.h
+        include/service/backup_service.h
+
         include/timer/timermodel.h
         include/config/config_service.h
         include/dto/time_record.h
@@ -196,12 +219,14 @@ if(BUILD_TESTS)
         Qt6::Widgets
         Qt6::Sql
         Qt6::Test
+
         GTest::gtest
         GTest::gtest_main
         GTest::gmock
         GTest::gmock_main
 
         fivecore
+        spdlog::spdlog
     )
 
     # 启用自动测试发现

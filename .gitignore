@@ -1,6 +1,10 @@
 build/
 res/
-*.pro.user
+build-release/
+.trae/
+.idea/
+.gitignore
+*.*.pro.user
 *.pro.user.*
 *.o
 *.obj
@@ -11,8 +15,10 @@ res/
 *.pdb
 .DS_Store
 Thumbs.db
+CMakeLists.txt.user
 
 # clangd 索引缓存与编译数据库本地副本（.clangd 指向 build 内的权威版本）
 .cache/
 compile_commands.json
 .vscode/
+

@@ -1,11 +1,13 @@
 #include "app/assempage.h"
 #include "app/splashpage.h"
 
+#include "fivecore/http.h"   // CurlGlobalGuard：libcurl 全局初始化/清理
+#include "fivecore/CurlMultiContext.h"  // shutdown_multi_context：退出前有序销毁
+
 #include <QApplication>
 #include <QFile>
 #include <QPropertyAnimation>
-#include "fivecore/util/sha256_utils.h"
-#include "fivecore/util/string_utils.h"
+
 
 // ================================================================
 // 启动流程（B-14e：以具名函数封装，main 只保留骨架顺序）
@@ -50,17 +52,16 @@ void connectStartupFlow(splashPage *splash, assemPage &mainWindow, QPropertyAnim
 }
 
 } //
-namespace
+
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    // 在main函数内或者某个构造函数中
-    auto s = fivecore::util::trim("   hello fivecore   ");
-    qDebug() << QString::fromStdString(s);
-    auto hash_stub = fivecore::util::sha256_string("test123");
-    qDebug() << QString::fromStdString(hash_stub);
+    // libcurl 全局初始化（RAII，main 返回时自动 cleanup）；
+    // 必须在任何网络操作之前构造，多线程/OpenSSL 场景下不可或缺
+    fivecore::http::CurlGlobalGuard curlGuard;
+
 
     // 全局样式表（U-1a：res/style/app.qss）
     applyGlobalStyle(a);
@@ -78,5 +79,10 @@ int main(int argc, char *argv[])
     splash->splashShow();
 
     qDebug() << "w.show()";
-    return a.exec();
+    int ret = a.exec();
+
+    // 退出顺序：先销毁 multi 单例（join IO 线程 + curl_multi_cleanup），
+    // 之后 curlGuard 析构执行 curl_global_cleanup；顺序不可颠倒
+    fivecore::http_async::shutdown_multi_context();
+    return ret;
 }

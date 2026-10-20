@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowIcon">
-   <iconset resource="pic.qrc">
+   <iconset>
     <normaloff>:/icon/res/icon/window_icon.png</normaloff>:/icon/res/icon/window_icon.png</iconset>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,1,0">
@@ -270,7 +270,7 @@
          <string>FiveClock</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -280,7 +280,7 @@
          <string>专注当下</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -302,8 +302,6 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="pic.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

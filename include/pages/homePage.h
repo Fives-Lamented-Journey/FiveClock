@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QPixmap>         // m_bgScaled 背景缩放缓存
 #include <QDateTime>       // m_time 为值成员，需要完整类型
+#include "include/pages/backuplogdialog.h"
 
 QT_BEGIN_NAMESPACE
 class QTimer;
@@ -13,6 +14,7 @@ QT_END_NAMESPACE
 class mybutton;
 class RecordService;
 class TimerService;
+class BackupService;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -54,11 +56,17 @@ public:
     mybutton *normalScreenButton = nullptr;
     mybutton *exitButton = nullptr;
 
+    mybutton *uploadButton = nullptr;
+    mybutton *downloadButton = nullptr;
+
 signals:
     void lcdChanged(QString time);  // LCD 变化通知（转发给桌宠）
     void workingNow();              // 正在工作提醒（托盘提示）
     void noWorkingNow();            // 未工作提醒
     void pausingNow();              // 暂停提醒
+
+    void dobackup();
+    void dorestore();
 
 public slots:
     void onStartButtonClicked();
@@ -66,6 +74,11 @@ public slots:
     void onPauseButtonClicked();
     void onCounterButtonClicked();
     void do_now_timer_timeout();
+
+    void onUploadButtonClicked();
+    void onDownloadButtonClicked();
+    void onBackupFinished(bool ok,QString err);
+
 
 private slots:
     // TimerService 信号处理：更新 LCD / 按钮状态 / 转发提醒信号
@@ -84,8 +97,20 @@ private:
 
     TimerService *m_timerService = nullptr;   // 计时业务服务（计时控制）
     RecordService *m_recordService = nullptr;  // 记录业务服务（查询/记录操作）
+    BackupService *m_backup_service = nullptr;
+    QThread* m_backup_thread;
+
+    BackupLogDialog* m_backupDialog;
 
     Ui::Widget *ui;
+
+    void initButton();
+    void initLayout();
+    void initBackupLogDialog();
+    void initUI();
+    void initSingals();
+
+    void initBackUpService();
 
 protected:
     void paintEvent(QPaintEvent *event) override;

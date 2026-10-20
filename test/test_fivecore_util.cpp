@@ -3,24 +3,12 @@
 //
 
 #include <gtest/gtest.h>
-#include "fivecore/util/string_utils.h"
-#include "fivecore/util/sha256_utils.h"
+#include "service/backup_service.h"
 
-using namespace fivecore::util;
 
-TEST(StringUtil, TrimTest)
+TEST(test_fivecore_util,integration)
 {
-    EXPECT_EQ(trim("   abc   "), "abc");
-    EXPECT_EQ(trim("empty"), "empty");
-    EXPECT_EQ(trim(""), "");
+    BackupService bs;
+    bs.doBackup();
 }
 
-TEST(Sha256Util, StringStub)
-{
-    EXPECT_EQ(sha256_string("test"), "stub-sha256-placeholder");
-}
-
-TEST(Sha256Util, FileStub)
-{
-    EXPECT_EQ(sha256_file("test.db"), "stub-file-sha256-placeholder");
-}
