@@ -1,0 +1,9 @@
+{
+  "_comment": "备份服务器网络配置；缺失或为空的字段将使用程序内置默认值",
+  "backup": {
+    "base_url": "http://127.0.0.1:8000",
+    "presign_upload_path": "/api/presign/upload",
+    "presign_download_path": "/api/presign/download",
+    "upload_confirm_path": "/api/upload/confirm"
+  }
+}

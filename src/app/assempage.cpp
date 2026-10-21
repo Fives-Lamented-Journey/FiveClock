@@ -16,6 +16,27 @@
 #include <QApplication>
 #include <QPushButton>
 #include <QMouseEvent>
+#include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
+
+namespace {
+// 配置文件查找顺序：可执行文件目录 → 当前工作目录
+// 均不存在时返回首个候选路径（loadFromJson 会输出告警并使用内置默认值）
+QString resolveConfigPath()
+{
+    const QStringList candidates = {
+        QCoreApplication::applicationDirPath() + QStringLiteral("/config.json"),
+        QDir::currentPath() + QStringLiteral("/config.json")
+    };
+    for (const QString &path : candidates)
+    {
+        if (QFileInfo::exists(path))
+            return path;
+    }
+    return candidates.first();
+}
+} // namespace
 
 // assemPage 类的构造函数（B-14b：只保留装配顺序，实现细节分解到各 init/connect 方法）
 assemPage::assemPage(QWidget *parent)
@@ -45,6 +66,8 @@ void assemPage::initServices()
     m_timerService = std::make_unique<TimerService>();
     // 3. 创建 ConfigService（集中管理常量与配置）
     m_configService = std::make_unique<ConfigService>();
+    // 3.1 读取外部 JSON 配置（缺失/损坏时保持内置默认值，不中断启动）
+    m_configService->loadFromJson(resolveConfigPath());
     // 4. 将 ConfigService 注入 TimerService（转发给 TimerModel 读取计时常量）
     m_timerService->setConfigService(m_configService.get());
 }
@@ -60,6 +83,8 @@ void assemPage::initPages()
     aHomePage = new Widget(this);
     aHomePage->setTimerService(m_timerService.get());
     aHomePage->setRecordService(m_recordService.get());
+    // 主页转发注入：备份端点 URL 来自 ConfigService（需在 Widget 构造后注入）
+    aHomePage->setConfigService(m_configService.get());
 
     // 创建子页面实例
     aSubPage = new subPage(this);

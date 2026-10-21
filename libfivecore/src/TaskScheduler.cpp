@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/10/4.
-//
+
 #include "fivecore/TaskScheduler.h"
 
 #include <algorithm>
@@ -136,7 +134,7 @@ namespace fivecore::scheduler
 
         if (queued_removed)
         {
-            // 排队取消的回调在本线程同步触发（见头文件线程边界说明）
+            // 排队取消的回调在本线程同步触发
             if (deferred.first)
             {
                 deferred.first(deferred.second);

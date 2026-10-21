@@ -34,6 +34,7 @@ namespace fivecore::http {
 
         // 直接构造你原来的Task，传入包装后的回调，Task代码完全不用修改
         auto task = std::make_shared<fivecore::http_async::HttpPutStreamTask>(url, file_path, task_callback_wrapper);
+
         auto ctx = fivecore::http_async::get_multi_context();
         if(ctx != nullptr)
         {

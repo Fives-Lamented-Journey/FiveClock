@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/9/28.
-//
+
 #include "fivecore/INetTask.h"
 
 namespace fivecore::http_async

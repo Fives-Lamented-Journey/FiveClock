@@ -8,6 +8,8 @@
  *
  * 内部持有一个独立 IO 线程，通过 curl_multi 驱动所有异步 HTTP 任务。
  * 业务线程通过 submit_task() 提交任务，任务完成后回调在 IO 线程中触发。
+ *
+ * @todo 改进：easy句柄支持
  */
 
 #ifndef LIBFIVECORE_CURLMULTICONTEXT_H
@@ -30,10 +32,10 @@ namespace fivecore::http_async
     /**
      * @brief curl_multi 异步调度上下文
      *
-     * - 单 IO 线程 + curl_multi 驱动所有并发任务
-     * - pending_tasks_ 队列：业务线程提交的待启动任务
-     * - active_tasks_ map：正在 multi handle 上执行的任务（key 为裸指针，value 为 shared_ptr，
-     *   保证任务在执行期间不被提前析构）
+     * 单 IO 线程 + curl_multi 驱动所有并发任务
+     * pending_tasks_ 队列：业务线程提交的待启动任务
+     * active_tasks_ map：正在 multi handle 上执行的任务（key 为裸指针，value 为 shared_ptr，
+     * 保证任务在执行期间不被提前析构）
      *
      * 使用方式：通过 get_multi_context() 获取全局单例，调用 submit_task() 提交任务。
      */
@@ -46,7 +48,10 @@ namespace fivecore::http_async
          */
         static Result<std::unique_ptr<CurlMultiContext>> Create();
 
-        /// 析构：自动调用 stop() 停止 IO 线程
+        /**
+         * @brief 析构：自动调用 stop() 停止 IO 线程
+         * @todo 缺陷：存在微妙竞态，pendingTask可能有残留提交任务
+         */
         ~CurlMultiContext();
 
         /// 禁止拷贝

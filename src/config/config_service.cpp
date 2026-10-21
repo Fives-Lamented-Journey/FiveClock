@@ -1,5 +1,10 @@
 #include "config/config_service.h"
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDebug>
+
 ConfigService::ConfigService(QObject *parent)
     : QObject(parent)
 {
@@ -28,6 +33,12 @@ ConfigService::ConfigService(QObject *parent)
     // 应用元信息
     m_appName         = QStringLiteral("FiveClock");
     m_appTrayTooltip  = QStringLiteral("Five's clock");
+
+    // 备份服务网络端点（与 backup-server 默认部署一致）
+    m_backupBaseUrl              = QStringLiteral("http://127.0.0.1:8000");
+    m_backupPresignUploadPath    = QStringLiteral("/api/presign/upload");
+    m_backupPresignDownloadPath  = QStringLiteral("/api/presign/download");
+    m_backupUploadConfirmPath    = QStringLiteral("/api/upload/confirm");
 }
 
 ConfigService::~ConfigService() = default;
@@ -94,13 +105,55 @@ int ConfigService::msPerHour() const { return m_msPerHour; }
 int ConfigService::msPerSecond() const { return m_msPerSecond; }
 QString ConfigService::timeFormatHms() const { return m_timeFormatHms; }
 
-// ---------- 预留 JSON 持久化 ----------
+// ---------- 备份服务网络端点 ----------
+
+QString ConfigService::backupUrl(const QString &path) const
+{
+    QString base = m_backupBaseUrl;
+    if (base.endsWith(QLatin1Char('/')))
+        base.chop(1);
+    return base + path;
+}
+
+QString ConfigService::backupBaseUrl() const { return m_backupBaseUrl; }
+QString ConfigService::backupPresignUploadUrl() const { return backupUrl(m_backupPresignUploadPath); }
+QString ConfigService::backupPresignDownloadUrl() const { return backupUrl(m_backupPresignDownloadPath); }
+QString ConfigService::backupUploadConfirmUrl() const { return backupUrl(m_backupUploadConfirmPath); }
+
+// ---------- JSON 持久化 ----------
 
 bool ConfigService::loadFromJson(const QString &filePath)
 {
-    Q_UNUSED(filePath);
-    // 本迭代不实现，预留接口
-    return false;
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        qWarning() << "ConfigService: 无法打开配置文件" << filePath << "，使用内置默认值";
+        return false;
+    }
+
+    QJsonParseError parseError{};
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        qWarning() << "ConfigService: 配置文件解析失败" << filePath
+                   << parseError.errorString() << "，使用内置默认值";
+        return false;
+    }
+
+    // backup 节：仅覆盖存在的非空字符串项
+    const QJsonObject backup = doc.object().value(QStringLiteral("backup")).toObject();
+    const auto overrideIfPresent = [&backup](const char *key, QString &target)
+    {
+        const QString value = backup.value(QLatin1String(key)).toString().trimmed();
+        if (!value.isEmpty())
+            target = value;
+    };
+    overrideIfPresent("base_url", m_backupBaseUrl);
+    overrideIfPresent("presign_upload_path", m_backupPresignUploadPath);
+    overrideIfPresent("presign_download_path", m_backupPresignDownloadPath);
+    overrideIfPresent("upload_confirm_path", m_backupUploadConfirmPath);
+
+    return true;
 }
 
 bool ConfigService::saveToJson(const QString &filePath) const

@@ -1,6 +1,3 @@
-//
-// Created by wufan on 2026/9/21.
-//
 
 /**
  * @file http.h
@@ -12,6 +9,8 @@
  *    返回 Result<HttpResponse>，错误通过 ErrorCode 结构化表达
  *
  * 使用前需在进程入口构造一次 CurlGlobalGuard 完成 libcurl 全局初始化。
+ *
+ * @todo 改进:可以对原始curl句柄做层薄RAII封装
  */
 
 #ifndef LIBFIVECORE_HTTP_H
@@ -54,6 +53,8 @@ namespace fivecore::http {
      * @param url 请求地址
      * @param json_str 请求体 JSON 字符串
      * @return HttpResponse，ok 表示 curl 成功且状态码 200
+     *
+     * 注：暂时post没有带查询参数的需求
      */
     HttpResponse post_json(const std::string& url, const std::string& json_str);
 
@@ -62,6 +63,8 @@ namespace fivecore::http {
      * @param url 预签名上传地址
      * @param file_path 本地待上传文件路径
      * @return HttpResponse，ok 表示上传成功且状态码 200
+     *
+     * 注：S3签名由后端生成，客户端直接使用
      */
     HttpResponse put_file_stream(const std::string& url, const std::string& file_path);
 
@@ -70,6 +73,8 @@ namespace fivecore::http {
      * @param url 下载地址
      * @param outputFilePath 本地保存路径
      * @return HttpResponse，ok 表示下载成功且状态码 200
+     *
+     * 注：S3签名由后端生成，客户端直接使用
      */
     HttpResponse get_file_stream(const std::string& url, const std::string& outputFilePath);
 

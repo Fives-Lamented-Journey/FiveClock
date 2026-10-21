@@ -1,3 +1,17 @@
+/**
+ * @file backup_service.h
+ * @brief 备份服务提供者，业务与网络之间的粘合层，翻译官
+ *
+ * 基于TaskScheduler(持有)实现网络传输服务功能的粘合层
+ * 同时提供降级服务（TaskScheduler创建失败时，会与CurlMutiContext直接交互，进行任务投递）
+ * 通过ConfigService实现配置注入（IP/URL等）
+ *
+ * @todo 备份文件名称同样不应该硬编码，应当置于配置文件中
+ * @todo 恢复文件名称不应该于源文件名称重复，应当先通过添加后缀或其它方式实现恢复文件名称与源文件的差异，恢复成功后，再删除源文件，同时更改恢复文件名称，避免恢复失败时，造成源文件损坏
+ * @todo 清理遗留代码
+ * @todo
+ *
+ */
 #ifndef BACKUP_SERVICE_H
 #define BACKUP_SERVICE_H
 
@@ -8,6 +22,7 @@
 #include <cstdint>
 #include <mutex>
 #include <memory>
+#include <string>
 
 // 前向声明，避免把libfivecore头文件带入MOC
 namespace fivecore::http {
@@ -23,6 +38,8 @@ namespace fivecore::scheduler {
     class TaskScheduler;
 }
 
+class ConfigService;
+
 class BackupService : public QObject
 {
     Q_OBJECT
@@ -30,6 +47,10 @@ public:
     explicit BackupService(QObject *parent = nullptr);
     /// 析构：停止调度器（排队任务以Cancelled结束，完成hook自动注销）
     ~BackupService() override;
+
+    /// 注入配置服务（备份端点 URL 来源；仅读取，不持有所有权）
+    /// 直接方法调用即可（仅存储指针，与所在线程无关）
+    void setConfigService(const ConfigService *service);
 
 public slots:
     /// 子线程槽：启动备份任务
@@ -49,8 +70,16 @@ signals:
 private:
     std::atomic<bool> m_running{false};
 
+    // 配置服务（端点 URL 来源；外部注入，非拥有指针，仅只读访问）
+    const ConfigService *m_configService = nullptr;
+
     bool checkRunning();
     bool calcSha256(const std::string& path, std::string& outSha);
+
+    // 备份端点 URL（已注入 ConfigService 则读取配置，否则回退内置默认地址）
+    std::string presignUploadUrl() const;
+    std::string presignDownloadUrl() const;
+    std::string uploadConfirmUrl() const;
 
     bool fetchUploadPresignedUrl(const std::string& filePath, uint64_t fileSize, const std::string& sha256,
                            std::string& outUploadUrl, std::string& outMetaId);

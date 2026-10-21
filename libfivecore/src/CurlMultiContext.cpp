@@ -200,6 +200,7 @@ namespace fivecore::http_async
                 {
                     CURL* easy = msg->easy_handle;
                     INetTask* task_ptr = nullptr;
+                    //约定：任务创建方需要将this指针赋值给PRIVATE指针
                     curl_easy_getinfo(easy, CURLINFO_PRIVATE, &task_ptr);
                     auto it = active_tasks_.find(task_ptr);
                     if (it != active_tasks_.end())
@@ -242,7 +243,10 @@ namespace fivecore::http_async
 
 
             int fds = 0;
-            curl_multi_wait(multi_handle_, nullptr, 0, 10, &fds);
+            //旧：
+            // curl_multi_wait(multi_handle_, nullptr, 0, 10, &fds);
+            // 新（curl 7.66+）：
+            curl_multi_poll(multi_handle_, nullptr, 0, 10, &fds);
         }
     }
 }

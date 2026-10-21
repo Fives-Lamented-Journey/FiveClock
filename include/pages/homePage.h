@@ -14,6 +14,7 @@ QT_END_NAMESPACE
 class mybutton;
 class RecordService;
 class TimerService;
+class ConfigService;
 class BackupService;
 
 QT_BEGIN_NAMESPACE
@@ -35,6 +36,8 @@ public:
     void setRecordService(RecordService *service);
     // 注入计时业务服务（计时控制通过它）
     void setTimerService(TimerService *service);
+    // 注入配置服务（转发给 BackupService 读取备份端点 URL）
+    void setConfigService(ConfigService *service);
 
     // 显示当前时间的函数
     void showNowTime();

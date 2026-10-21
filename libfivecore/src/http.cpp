@@ -5,11 +5,11 @@
 
 /**
  * @file http.cpp
- * @brief 同步 HTTP 客户端实现（libcurl easy 接口）
+ * @brief 同步 HTTP 客户端实现
  */
 namespace fivecore::http {
 
-// 接收响应数据的write回调（静态C风格）
+// 接收响应数据的write回调
 static size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
     size_t total = size * nmemb;
@@ -18,7 +18,7 @@ static size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdat
     return total;
 }
 
-// PUT上传读取文件的read回调（静态C风格）
+// PUT上传读取文件的read回调
 static size_t read_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
     auto* fs = static_cast<std::ifstream*>(userdata);
@@ -27,7 +27,7 @@ static size_t read_callback(char* ptr, size_t size, size_t nmemb, void* userdata
     return static_cast<size_t>(fs->gcount());
 }
 
-    // 新增：下载写文件回调
+    // 下载写文件回调
 static size_t download_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
 {
     std::ofstream* fs = static_cast<std::ofstream*>(userdata);
@@ -79,10 +79,6 @@ CurlGlobalGuard::~CurlGlobalGuard()
     curl_global_cleanup();
 }
 
-    // http.cpp
-
-    // 静态 write_callback 你代码里已经存在，无需重复写
-    // static size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) { ... }
 
 /// @copydoc fivecore::http::get
 HttpResponse get(const std::string& url, const std::vector<std::pair<std::string,std::string>>& queries,long timeout_ms)
@@ -140,7 +136,7 @@ HttpResponse post_json(const std::string& url, const std::string& json_str)
         return res;
     }
 
-    // 1. 初始化头链表，必须初始化为NULL
+    // 初始化头链表，必须初始化为NULL
     struct curl_slist* headers = nullptr;
 
     // 添加 application 头，常用：application/json
@@ -212,6 +208,7 @@ HttpResponse put_file_stream(const std::string& url, const std::string& file_pat
 
 
     std::string response_body;
+    //url(S3预签名)由后端生成，客户端查询到后直接使用，而不用自己使用buildurl()拼装
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
@@ -265,12 +262,14 @@ HttpResponse get_file_stream(const std::string& url, const std::string& outputFi
     }
 
     std::string respBody;
+    //url(S3预签名)由后端生成，客户端查询到后直接使用，而不用自己使用buildurl()拼装
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, download_write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fs);
 
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 30000L);
 
     CURLcode curl_ret = curl_easy_perform(curl);

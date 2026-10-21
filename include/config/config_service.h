@@ -8,10 +8,10 @@
 #include "dto/time_record.h"   // EventClass 枚举（唯一可信源）
 
 // ConfigService：配置服务
-// 职责：集中管理内置常量（事件分类、提示文本、阈值等）
+// 职责：集中管理内置常量（事件分类、提示文本、阈值、网络端点等）
 // 约束：不操作UI、不操作数据库、不依赖任何业务服务
 //       仅提供只读 getter 接口，禁止外部修改
-//       预留 JSON 持久化接口（本迭代不实现）
+//       支持 loadFromJson 用 JSON 文件覆盖内置默认值（文件缺失/解析失败时保持默认值）
 class ConfigService : public QObject
 {
     Q_OBJECT
@@ -74,12 +74,26 @@ public:
     QString timeFormatHms() const;           // 时间格式化模板 "hh:mm:ss"
 
     // ================================================================
-    // 预留接口：未来 JSON 持久化
+    // 备份服务网络端点（BackupService 使用）
+    // 完整 URL = backupBaseUrl() + 各端点路径；getter 返回拼接后的完整 URL
     // ================================================================
-    bool loadFromJson(const QString &filePath);   // 预留
+    QString backupBaseUrl() const;              // 备份服务器基地址（默认 http://127.0.0.1:8000）
+    QString backupPresignUploadUrl() const;     // 预签名上传接口
+    QString backupPresignDownloadUrl() const;   // 预签名下载接口
+    QString backupUploadConfirmUrl() const;     // 上传确认接口
+
+    // ================================================================
+    // JSON 持久化
+    // loadFromJson：读取 JSON 覆盖可配置项（当前支持 backup 节）；
+    //               文件缺失/解析失败返回 false 且保持默认值
+    // saveToJson：预留
+    // ================================================================
+    bool loadFromJson(const QString &filePath);
     bool saveToJson(const QString &filePath) const; // 预留
 
 private:
+    // 拼接备份端点完整 URL（容忍 base_url 末尾的 '/'）
+    QString backupUrl(const QString &path) const;
     // 通知/提示文本
     QString m_trayTitle;
     QString m_trayAlreadyWorking;
@@ -112,6 +126,12 @@ private:
     int m_msPerHour = 3600000;
     int m_msPerSecond = 1000;
     QString m_timeFormatHms = QStringLiteral("%1:%2:%3");
+
+    // 备份服务网络端点（默认值与现有部署一致，可被 config.json 覆盖）
+    QString m_backupBaseUrl;
+    QString m_backupPresignUploadPath;
+    QString m_backupPresignDownloadPath;
+    QString m_backupUploadConfirmPath;
 };
 
 #endif // CONFIG_SERVICE_H

@@ -1,4 +1,5 @@
 #include "service/backup_service.h"
+#include "config/config_service.h"
 #include "fivecore/hash.h"
 #include "fivecore/fileutil.h"
 #include "fivecore/http.h"
@@ -12,12 +13,19 @@
 using json = nlohmann::json;
 using namespace fivecore;
 
+namespace {
+// 未注入 ConfigService 时的兜底端点
+constexpr const char *kDefaultPresignUploadUrl   = "http://127.0.0.1:8000/api/presign/upload";
+constexpr const char *kDefaultPresignDownloadUrl = "http://127.0.0.1:8000/api/presign/download";
+constexpr const char *kDefaultUploadConfirmUrl   = "http://127.0.0.1:8000/api/upload/confirm";
+}
+
 BackupService::BackupService(QObject *parent)
     : QObject(parent)
 {
     // 创建调度器并挂到全局 CurlMultiContext（提供超时保护/取消/统计能力）。
     // m_running 已保证同时只有一个任务在跑，max_concurrency=2 仅留余量；
-    // 创建失败则退化为原有直提模式（行为与集成前一致）
+    // 创建失败则退化为原有直提模式
     auto *ctx = fivecore::http_async::get_multi_context();
     if (ctx)
     {
@@ -43,6 +51,29 @@ BackupService::~BackupService()
         // 运行中任务自身回调随后触发时 invokeMethod(this) 因对象销毁被 Qt 丢弃
         m_scheduler->stop();
     }
+}
+
+void BackupService::setConfigService(const ConfigService *service)
+{
+    m_configService = service;
+}
+
+std::string BackupService::presignUploadUrl() const
+{
+    return m_configService ? m_configService->backupPresignUploadUrl().toStdString()
+                           : std::string(kDefaultPresignUploadUrl);
+}
+
+std::string BackupService::presignDownloadUrl() const
+{
+    return m_configService ? m_configService->backupPresignDownloadUrl().toStdString()
+                           : std::string(kDefaultPresignDownloadUrl);
+}
+
+std::string BackupService::uploadConfirmUrl() const
+{
+    return m_configService ? m_configService->backupUploadConfirmUrl().toStdString()
+                           : std::string(kDefaultUploadConfirmUrl);
 }
 
 void BackupService::doBackup()
@@ -108,7 +139,7 @@ void BackupService::doBackup()
     if (!fileutil::exists(path))
     {
         spdlog::error("文件不存在");
-        emit log("❌文件不存在");
+        emit log("文件不存在");
         emit finished(false,"文件不存在");
         m_running = false;
         return;
@@ -123,7 +154,7 @@ void BackupService::doBackup()
     if (!calcSha256(path, sha256))
     {
         spdlog::error("hash256失败");
-        emit log("❌SHA256哈希计算失败");
+        emit log("SHA256哈希计算失败");
         emit finished(false,"哈希计算失败");
         m_running = false;
         return;
@@ -137,7 +168,7 @@ void BackupService::doBackup()
     if (!fetchUploadPresignedUrl(path, fsize, sha256, uploadUrl, metaId))
     {
         spdlog::error("预签名获取失败");
-        emit log("❌获取上传预签名URL失败");
+        emit log("获取上传预签名URL失败");
         emit finished(false,"获取预签名失败");
         m_running = false;
         return;
@@ -149,7 +180,7 @@ void BackupService::doBackup()
     if (!uploadFile(uploadUrl, path))
     {
         spdlog::error("PUT上传失败");
-        emit log("❌MinIO文件上传失败");
+        emit log("MinIO文件上传失败");
         emit finished(false,"PUT上传失败");
         m_running = false;
         return;
@@ -160,14 +191,14 @@ void BackupService::doBackup()
     if (!confirm(metaId,sha256))
     {
         spdlog::error("上传确认失败");
-        emit log("❌上传确认接口调用失败");
+        emit log("上传确认接口调用失败");
         emit finished(false,"上传确认失败");
         m_running = false;
         return;
     }
 
     emit progress(100);
-    emit log("✅备份任务全部完成");
+    emit log("备份任务全部完成");
     emit finished(true,"");
     m_running = false;
 }
@@ -221,10 +252,10 @@ void BackupService::doRestore()
     // }
     // if(realSha != expectSha)
     // {
-    //     spdlog::error("❌哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
+    //     spdlog::error("哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
     //     return;
     // }
-    // spdlog::info("✅恢复完成，哈希校验通过");
+    // spdlog::info("恢复完成，哈希校验通过");
 
 
     if (!checkRunning())
@@ -242,7 +273,7 @@ void BackupService::doRestore()
     if (!ok)
     {
         spdlog::error("预签名获取失败");
-        emit log("❌获取下载预签名URL失败");
+        emit log("获取下载预签名URL失败");
         emit finished(false,"获取下载预签名失败");
         m_running = false;
         return;
@@ -256,7 +287,7 @@ void BackupService::doRestore()
     if (!ok)
     {
         spdlog::error("文件下载失败");
-        emit log("❌文件流式下载失败");
+        emit log("文件流式下载失败");
         emit finished(false,"下载文件失败");
         m_running = false;
         return;
@@ -269,15 +300,15 @@ void BackupService::doRestore()
     if(!calcSha256(outfilePath, realSha))
     {
         spdlog::error("恢复后文件哈希计算失败");
-        emit log("❌恢复后本地文件哈希计算失败");
+        emit log("恢复后本地文件哈希计算失败");
         emit finished(false,"本地哈希计算失败");
         m_running = false;
         return;
     }
     if(realSha != expectSha)
     {
-        spdlog::error("❌哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
-        emit log(QString("❌哈希校验不匹配！期望:%1 实际:%2")
+        spdlog::error("哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
+        emit log(QString("哈希校验不匹配！期望:%1 实际:%2")
                      .arg(QString::fromStdString(expectSha))
                      .arg(QString::fromStdString(realSha)));
         emit finished(false,"文件哈希校验不匹配，文件已损坏");
@@ -286,7 +317,7 @@ void BackupService::doRestore()
     }
 
     emit progress(100);
-    emit log("✅恢复完成，SHA256完整性校验通过！");
+    emit log("恢复完成，SHA256完整性校验通过！");
     emit finished(true,"");
     m_running = false;
 }
@@ -316,7 +347,7 @@ bool BackupService::fetchUploadPresignedUrl(const std::string& filePath, uint64_
         {"file_size", fileSize},
         {"sha256_hash", sha256}
     };
-    auto resp = http::post_json("http://127.0.0.1:8000/api/presign/upload", reqBody.dump());
+    auto resp = http::post_json(presignUploadUrl(), reqBody.dump());
     if (!resp.ok)
         return false;
 
@@ -340,7 +371,7 @@ bool BackupService::fetchDownloadPresignedUrl(const std::string& file,std::strin
     // auto resp = http::get(url,query);
     // presign = json::parse(resp.body)["download_url"].get<std::string>();
     // return resp.ok;
-    std::string url = "http://127.0.0.1:8000/api/presign/download";
+    std::string url = presignDownloadUrl();
     std::vector<std::pair<std::string,std::string>> query = {{"object_key",file}};
     auto resp = http::get(url,query);
     if(!resp.ok) return false;
@@ -362,7 +393,7 @@ bool BackupService::confirm(const std::string& metaId, const std::string& sha256
         {"object_key", metaId},
         {"sha256_hash", sha256}
     };
-    auto resp = http::post_json("http://127.0.0.1:8000/api/upload/confirm", reqBody.dump());
+    auto resp = http::post_json(uploadConfirmUrl(), reqBody.dump());
     return resp.ok;
 }
 
@@ -376,12 +407,12 @@ void BackupService::doBackupAsync()
 
     QString localFilePath = "coreTime.db";
     std::string path = localFilePath.toStdString();
-    emit log(QString("【异步备份】开始备份，文件：%1").arg(localFilePath));
+    emit log(QString("异步备份开始备份，文件：%1").arg(localFilePath));
 
     if (!fileutil::exists(path))
     {
         spdlog::error("文件不存在");
-        emit log("❌文件不存在");
+        emit log("文件不存在");
         emit finished(false,"文件不存在");
         m_running = false;
         return;
@@ -396,7 +427,7 @@ void BackupService::doBackupAsync()
     if (!calcSha256(path, sha256))
     {
         spdlog::error("hash256失败");
-        emit log("❌SHA256哈希计算失败");
+        emit log("SHA256哈希计算失败");
         emit finished(false,"哈希计算失败");
         m_running = false;
         return;
@@ -410,12 +441,12 @@ void BackupService::doBackupAsync()
     if (!fetchUploadPresignedUrl(path, fsize, sha256, uploadUrl, metaId))
     {
         spdlog::error("预签名获取失败");
-        emit log("❌获取上传预签名URL失败");
+        emit log("获取上传预签名URL失败");
         emit finished(false,"获取预签名失败");
         m_running = false;
         return;
     }
-    emit log("获取预签名地址成功，开始【异步PUT上传】");
+    emit log("获取预签名地址成功，开始异步PUT上传");
     emit progress(40);
 
     // 3 异步流式上传到MinIO（经 TaskScheduler 调度：限流 + 全局超时 + 取消记账）
@@ -466,7 +497,7 @@ void BackupService::doBackupAsync()
                              std::chrono::duration_cast<std::chrono::milliseconds>(tc.run_time).count());
                 if (tc.reason == FR::TimedOut || tc.reason == FR::Cancelled)
                 {
-                    emit log(QString("⚠️%1（任务ID:%2）").arg(QString::fromLatin1(why)).arg(tc.id));
+                    emit log(QString("%1（任务ID:%2）").arg(QString::fromLatin1(why)).arg(tc.id));
                 }
             };
             auto sub_res = m_scheduler->submit(task, std::move(comp_cb));
@@ -504,7 +535,7 @@ void BackupService::doRestoreAsync()
     }
 
     std::string file = "coreTime.db";
-    emit log(QString("【异步恢复】开始恢复，目标文件：%1").arg(QString::fromStdString(file)));
+    emit log(QString("异步恢复开始恢复，目标文件：%1").arg(QString::fromStdString(file)));
 
     // 1. 获取下载预签名URL + 期望哈希（同步调用，请求量小，阻塞可忽略）
     std::string presign_url;
@@ -513,7 +544,7 @@ void BackupService::doRestoreAsync()
     if (!ok)
     {
         spdlog::error("预签名获取失败");
-        emit log("❌获取下载预签名URL失败");
+        emit log("获取下载预签名URL失败");
         emit finished(false,"获取下载预签名失败");
         m_running = false;
         return;
@@ -572,7 +603,7 @@ void BackupService::doRestoreAsync()
                              std::chrono::duration_cast<std::chrono::milliseconds>(tc.run_time).count());
                 if (tc.reason == FR::TimedOut || tc.reason == FR::Cancelled)
                 {
-                    emit log(QString("⚠️%1（任务ID:%2）").arg(QString::fromLatin1(why)).arg(tc.id));
+                    emit log(QString("%1（任务ID:%2）").arg(QString::fromLatin1(why)).arg(tc.id));
                 }
             };
             auto sub_res = m_scheduler->submit(task, std::move(comp_cb));
@@ -610,23 +641,23 @@ void BackupService::cancelTask()
     if (m_scheduler && m_uploadSchedId != 0 &&
         m_scheduler->cancel(m_uploadSchedId).is_ok())
     {
-        emit log("⚠️已触发备份任务取消");
+        emit log("已触发备份任务取消");
     }
     else if (m_uploadTask)
     {
         m_uploadTask->cancel();
-        emit log("⚠️已触发备份任务取消");
+        emit log("已触发备份任务取消");
     }
 
     if (m_scheduler && m_downloadSchedId != 0 &&
         m_scheduler->cancel(m_downloadSchedId).is_ok())
     {
-        emit log("⚠️已触发恢复任务取消");
+        emit log("已触发恢复任务取消");
     }
     else if (m_downloadTask)
     {
         m_downloadTask->cancel();
-        emit log("⚠️已触发恢复任务取消");
+        emit log("已触发恢复任务取消");
     }
 }
 
@@ -638,7 +669,7 @@ void BackupService::finalizeBackup(bool ok, const QString& errorMsg,
     if (!ok)
     {
         spdlog::error("异步PUT上传失败: {}", errorMsg.toStdString());
-        emit log("❌MinIO异步文件上传失败");
+        emit log("MinIO异步文件上传失败");
         emit finished(false, "异步PUT上传失败");
     }
     else
@@ -650,13 +681,13 @@ void BackupService::finalizeBackup(bool ok, const QString& errorMsg,
         if (!confirm(metaId, sha256))
         {
             spdlog::error("上传确认失败");
-            emit log("❌上传确认接口调用失败");
+            emit log("上传确认接口调用失败");
             emit finished(false, "上传确认失败");
         }
         else
         {
             emit progress(100);
-            emit log("✅【异步备份】任务全部完成");
+            emit log("异步备份任务全部完成");
             emit finished(true, "");
         }
     }
@@ -675,7 +706,7 @@ void BackupService::finalizeRestore(bool ok, const QString& errorMsg,
     if (!ok)
     {
         spdlog::error("异步文件下载失败: {}", errorMsg.toStdString());
-        emit log("❌文件流式下载失败");
+        emit log("文件流式下载失败");
         emit finished(false, "下载文件失败");
     }
     else
@@ -688,13 +719,13 @@ void BackupService::finalizeRestore(bool ok, const QString& errorMsg,
         if (!calcSha256(outfilePath, realSha))
         {
             spdlog::error("恢复后文件哈希计算失败");
-            emit log("❌恢复后本地文件哈希计算失败");
+            emit log("恢复后本地文件哈希计算失败");
             emit finished(false, "本地哈希计算失败");
         }
         else if (realSha != expectSha)
         {
-            spdlog::error("❌哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
-            emit log(QString("❌哈希校验不匹配！期望:%1 实际:%2")
+            spdlog::error("哈希校验不匹配！expect:{} real:{}", expectSha, realSha);
+            emit log(QString("哈希校验不匹配！期望:%1 实际:%2")
                          .arg(QString::fromStdString(expectSha))
                          .arg(QString::fromStdString(realSha)));
             emit finished(false, "文件哈希校验不匹配，文件已损坏");
@@ -702,7 +733,7 @@ void BackupService::finalizeRestore(bool ok, const QString& errorMsg,
         else
         {
             emit progress(100);
-            emit log("✅【异步恢复】完成，SHA256完整性校验通过！");
+            emit log("异步恢复完成，SHA256完整性校验通过！");
             emit finished(true, "");
         }
     }

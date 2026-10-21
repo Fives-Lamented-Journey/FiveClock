@@ -22,3 +22,11 @@ CMakeLists.txt.user
 compile_commands.json
 .vscode/
 
+# 运行时产物：本地数据库与集成测试临时文件
+coreTime.db
+intergration.txt
+intergration_async.txt
+download_intergration.txt
+intergration_cancel.bin
+libfivecore/tests/abc.txt
+

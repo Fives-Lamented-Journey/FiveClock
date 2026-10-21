@@ -161,9 +161,11 @@ std::string sha256_file(const std::string& path)
 Result<std::string> res_sha256_file(const std::string& path)
 {
     auto existRes = fileutil::res_exists(path);
+
     if(auto e = take_err(existRes)){
         return Result<std::string>::Err(*e);
     }
+
     if(!existRes.value()){
         return Result<std::string>::Err(ErrorInfo::make(ErrorCode::FileNotFound, "文件不存在"));
     }

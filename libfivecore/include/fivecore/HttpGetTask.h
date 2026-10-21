@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/9/28.
-//
+
 
 /**
  * @file HttpGetTask.h

@@ -4,6 +4,7 @@
 #include "service/record_service.h"
 #include "service/timer_service.h"
 #include "service/backup_service.h"
+#include "config/config_service.h"
 
 #include <QTimer>
 #include <QVBoxLayout>
@@ -56,6 +57,13 @@ void Widget::setRecordService(RecordService *service)
 {
     m_recordService = service;
     // RecordService 无计时信号，此处无需连接
+}
+
+// 注入配置服务：BackupService 在构造期已创建，直接转发（仅赋值指针，跨线程安全）
+void Widget::setConfigService(ConfigService *service)
+{
+    if (m_backup_service)
+        m_backup_service->setConfigService(service);
 }
 
 // 注入 TimerService（计时控制通过它）

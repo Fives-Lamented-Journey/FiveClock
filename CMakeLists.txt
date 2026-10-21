@@ -145,6 +145,13 @@ target_link_libraries(FiveClock
     spdlog::spdlog
 )
 
+# 运行时配置：复制到可执行文件目录（缺失时程序回退内置默认值）
+add_custom_command(TARGET FiveClock POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.json
+        $<TARGET_FILE_DIR:FiveClock>/config.json
+)
+
 install(TARGETS FiveClock
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

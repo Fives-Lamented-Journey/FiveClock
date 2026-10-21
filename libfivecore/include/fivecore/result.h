@@ -107,13 +107,17 @@ namespace fivecore
             return Result(std::move(err));
         }
 
-        /** @return 是否持有成功值 */
+        /**
+         * @return 是否持有成功值
+         */
         [[nodiscard]] bool is_ok() const noexcept
         {
             return std::holds_alternative<T>(m_storage);
         }
 
-        /** @return 是否持有错误 */
+        /**
+         * @return 是否持有错误
+         */
         [[nodiscard]] bool is_err() const noexcept
         {
             return std::holds_alternative<ErrorInfo>(m_storage);

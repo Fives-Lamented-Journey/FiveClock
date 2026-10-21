@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/9/28.
-//
+
 
 /**
  * @file INetTask.h
@@ -85,10 +83,10 @@ namespace fivecore::http_async
          */
         virtual void on_finish(CURLcode curl_code, long http_code) = 0;
 
-        CURL* easy_ = nullptr;              ///< curl easy 句柄，由 CurlMultiContext 创建
-        std::atomic<bool> is_cancelled_{false}; ///< 取消标记（原子，业务线程写 / IO 线程读）
+        CURL* easy_ = nullptr;              // curl easy 句柄
+        std::atomic<bool> is_cancelled_{false}; // 取消标记（原子，业务线程写 / IO 线程读）
 
-        friend class CurlMultiContext;      ///< 允许 CurlMultiContext 直接操作 easy_
+        friend class CurlMultiContext;      // 允许 CurlMultiContext 直接操作 easy_
     };
 }
 
