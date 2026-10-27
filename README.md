@@ -12,6 +12,45 @@
 - **系统通知** — 计时结束等事件的通知提醒
 - **启动画面** — 应用冷启动过渡页
 
+## 界面预览
+
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <img src="pic/01-timer-home.png" alt="主页 · 专注计时"><br>
+      <b>主页 · 专注计时</b><br>
+      <sub>大号数字时钟叠加当前计时读数，底部为开始 / 暂停 / 结束控制，左侧为功能导航</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <img src="pic/02-record-calendar.png" alt="记录 · 日历视图"><br>
+      <b>记录 · 日历视图</b><br>
+      <sub>按月排列的日历格子，按天浏览记录；无数据时提示「记录为空」，右下角为新增按钮</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="pic/03-stats-empty.png" alt="统计 · 空状态"><br>
+      <b>统计 · 空状态</b><br>
+      <sub>顶部为当前日期与日期范围选择，连续记录未满七天时以插画式空状态提示</sub>
+    </td>
+    <td align="center" valign="top">
+      <img src="pic/04-desktop-pet.png" alt="桌面宠物"><br>
+      <b>桌面宠物</b><br>
+      <sub>独立置顶的透明宠物窗口，悬于桌面之上、不抢占焦点</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top">
+      <img src="pic/05-pet-menu.png" alt="宠物快捷菜单"><br>
+      <b>宠物快捷菜单</b><br>
+      <sub>右键唤出：开始计时 / 暂停·继续计时 / 分项次数+1 / 结束计时 / 隐藏 / 退出</sub>
+    </td>
+    <td width="50%" valign="top"></td>
+  </tr>
+</table>
+
+> 截图分辨率 1024×576，来源为开发机实际运行画面。
+
 ## 项目结构
 
 ```
@@ -32,6 +71,7 @@ FiveClock/
 │   ├── src/
 │   └── tests/              # GTest 单元测试
 ├── test/                   # 应用层单元测试（GTest + GMock）
+├── pic/                    # 界面截图（README 预览用）
 └── config.json             # 备份服务器网络配置（运行时复制到可执行目录）
 ```
 
