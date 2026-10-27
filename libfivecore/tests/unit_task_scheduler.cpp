@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/10/4.
-//
+
 // unit_task_scheduler.cpp — TaskScheduler 单元测试
 //
 // 不依赖外网，使用两类确定性本地端点：

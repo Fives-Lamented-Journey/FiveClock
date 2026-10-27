@@ -53,7 +53,8 @@ add_executable(fivecore_unit_test
         tests/unit_async_int.cpp
         tests/unit_task_scheduler.cpp
 )
-# ✅ 修正：GTest::gtest 首字母大写，不是GTEST::gtest
+
+
 target_link_libraries(fivecore_unit_test
         PRIVATE
         fivecore
@@ -72,9 +73,5 @@ target_compile_definitions(fivecore_unit_test PRIVATE HTTP_INTEGRATION_TEST)
 include(GoogleTest)
 gtest_discover_tests(fivecore_unit_test)
 
-# 简易控制台demo
-add_executable(fivecore_test tests/main.cpp
-        tests/unit_async_int.cpp
-)
-target_link_libraries(fivecore_test PRIVATE fivecore)
+
 

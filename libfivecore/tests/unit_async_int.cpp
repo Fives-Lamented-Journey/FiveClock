@@ -1,6 +1,4 @@
-//
-// Created by wufan on 2026/10/1.
-//
+
 // 追加到同一份测试文件，放在namespace fivecore::http::test里面
 #include <gtest/gtest.h>
 #include "fivecore/http.h"
