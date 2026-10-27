@@ -30,3 +30,6 @@ download_intergration.txt
 intergration_cancel.bin
 libfivecore/tests/abc.txt
 
+# 本地生成的文档
+*.pdf
+
