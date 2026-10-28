@@ -33,3 +33,6 @@ libfivecore/tests/abc.txt
 # 本地生成的文档
 *.pdf
 
+# 本地简历目录（含个人信息，勿提交）
+简历_v*/
+
