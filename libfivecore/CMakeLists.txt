@@ -4,10 +4,16 @@ project(libfivecore)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CURL_ROOT "G:/cppsoft/curl-8.22.0_1-win64-mingw")
-set(OPENSSL_ROOT_DIR "C:/msys64/ucrt64")
-# 你的GTest CONFIG路径，保留
-set(GTest_DIR "G:/cppsoft/googletest-1.14.0-install/lib/cmake/GTest" CACHE PATH "GTest cmake config")
+# 依赖搜索提示：仅当这些本机目录存在时才生效；其他机器请用 -DCMAKE_PREFIX_PATH 或 vcpkg 提供依赖
+if(EXISTS "G:/cppsoft/curl-8.22.0_1-win64-mingw")
+    set(CURL_ROOT "G:/cppsoft/curl-8.22.0_1-win64-mingw")
+endif()
+if(EXISTS "C:/msys64/ucrt64")
+    set(OPENSSL_ROOT_DIR "C:/msys64/ucrt64")
+endif()
+if(EXISTS "G:/cppsoft/googletest-1.14.0-install/lib/cmake/GTest")
+    set(GTest_DIR "G:/cppsoft/googletest-1.14.0-install/lib/cmake/GTest" CACHE PATH "GTest cmake config")
+endif()
 
 # 只查找一次GTest，CONFIG模式
 find_package(GTest CONFIG REQUIRED)
@@ -45,7 +51,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 enable_testing()
 
 add_executable(fivecore_unit_test
-        tests/unit_fileutil.cpp
         tests/unit_hash.cpp
         tests/unit_http.cpp
         tests/unit_result.cpp

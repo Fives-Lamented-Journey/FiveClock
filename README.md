@@ -7,7 +7,7 @@
 - **专注计时** — 自研计时模型（`TimerModel`）与计时服务（`TimerService`），计时状态全程驻留内存，不触碰数据库
 - **记录管理** — `RecordService` + SQLite 单一数据源，日历视图按天浏览记录
 - **图表统计** — 基于 Qt Charts 的数据可视化页面
-- **云端备份** — `BackupService` 通过预签名 URL 直传/下载对象存储，本地 SHA256 与云端校验值双向比对，配合 `TaskScheduler` 进行并发调度与超时取消
+- **云端备份** — `BackupService` 通过预签名 URL 直传/下载对象存储：上传前分块计算 SHA256 随确认接口回传，供服务端记录；恢复下载后本地重算并与后端期望值比对；配合 `TaskScheduler` 进行并发调度与超时取消
 - **桌面宠物** — 独立置顶的宠物窗口
 - **系统通知** — 计时结束等事件的通知提醒
 - **启动画面** — 应用冷启动过渡页
@@ -95,7 +95,7 @@ flowchart TD
 ```
 
 - **计时与存储分离**：`TimerService` 只管计时业务，`RecordService` 只管记录读写，二者互不感知
-- **备份三段式**：同步前奏（校验/哈希/预签名申请）→ 异步传输（libcurl IO 线程）→ 同步收尾（confirm / 完整性校验），回调经 `Qt::QueuedConnection` 跳回服务线程
+- **备份三段式**：同步前奏（哈希/预签名申请）→ 异步传输（libcurl IO 线程）→ 同步收尾（上传后 confirm 回传哈希；恢复后本地重算比对），回调经 `Qt::QueuedConnection` 跳回服务线程
 - **libfivecore 分层复用**：`TaskScheduler` 仅依赖 `INetTask` 抽象基类，不知道任何具体任务类型
 
 ## 构建指南（Windows）
@@ -126,7 +126,7 @@ cmake --build build --config Release
 cd build && ctest --output-on-failure
 ```
 
-> 说明：`libfivecore/CMakeLists.txt` 中 libcurl / OpenSSL / GTest 的查找路径当前指向本机目录（`G:/cppsoft/...`、`C:/msys64/...`），在其他机器构建前需按实际安装位置调整，或改用 vcpkg 等包管理器统一提供。
+> 说明：`libfivecore/CMakeLists.txt` 里的 `G:/cppsoft/...`、`C:/msys64/...` 只是**本机路径提示**，仅当对应目录存在时才生效；在其他机器上会自动退回标准 `find_package` 搜索，请用 `-DCMAKE_PREFIX_PATH=<依赖安装前缀>`（或 vcpkg）提供 libcurl / OpenSSL / GTest / nlohmann_json。
 
 ## 运行时配置
 
